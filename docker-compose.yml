@@ -1,0 +1,15 @@
+version: "3.8"  # или 3.9
+services:
+  postgres:
+    image: postgres:15
+    container_name: contest_postgres
+    environment:
+      POSTGRES_USER: contest_user
+      POSTGRES_PASSWORD: contest_pass
+      POSTGRES_DB: contest_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:
