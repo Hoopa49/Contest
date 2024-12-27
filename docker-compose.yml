@@ -1,5 +1,6 @@
-version: "3.8"  # или 3.9
+version: "3.8"
 services:
+  # 1) Сервис Postgres
   postgres:
     image: postgres:15
     container_name: contest_postgres
@@ -11,5 +12,29 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  # 2) Сервис Node.js (наш backend)
+  backend:
+    build: 
+      context: ./backend   # Папка, где лежит Dockerfile
+      dockerfile: Dockerfile
+    container_name: contest_backend
+    # Пробрасываем порт 3000 наружу
+    ports:
+      - "3000:3000"
+    # Зависимость: сначала должен подняться postgres
+    depends_on:
+      - postgres
+    # Пример переменных окружения
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: contest_user
+      DB_PASS: contest_pass
+      DB_NAME: contest_db
+      JWT_SECRET: MY_ULTRA_SECRET
+    # (Опционально) Если у вас нужна пересборка каждый раз - OK,
+    # но для dev-режима можно volume для live-reload. Или используйте nodemon.
+
 volumes:
   postgres_data:

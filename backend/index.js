@@ -2,6 +2,7 @@
 
 require('dotenv').config(); // если используете .env
 const express = require('express');
+const cors = require('cors');
 const app = express();
 
 // Импортируем Sequelize из config/db
@@ -13,6 +14,12 @@ const { Video, Contest } = require('./models/Connection');
 
 // Порт, на котором будет запускаться приложение
 const PORT = 3000;
+
+// Разрешаем запросы с других доменов
+app.use(cors({
+  origin: 'http://localhost:5173',  // адрес вашего фронтенда
+  credentials: true                 // если планируете передавать куки/сессии
+}));
 
 // Подключаем middleware для распознавания JSON
 app.use(express.json());
