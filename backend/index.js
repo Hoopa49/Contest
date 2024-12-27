@@ -3,6 +3,7 @@
 require('dotenv').config(); // если используете .env
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 
 // Импортируем Sequelize из config/db
@@ -25,14 +26,22 @@ app.use(cors({
 app.use(express.json());
 
 // Подключаем роуты
-const testRoutes = require('./routes/testRoutes');
-app.use('/', testRoutes);
+const videoRoutes = require('./routes/videoRoutes'); // подключаем новые маршруты
+app.use('/', videoRoutes);
 
 const contestRoutes = require('./routes/contestRoutes');
 app.use('/', contestRoutes);
 
 const authRoutes = require('./routes/authRoutes');
 app.use('/', authRoutes);
+
+// Раздача статических файлов фронтенда
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Обработка всех остальных запросов и отдача index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
+});
 
 // Функция запуска приложения
 async function startServer() {

@@ -1,17 +1,32 @@
+<!-- frontend/src/App.vue -->
 <template>
-  <header>
-    <nav>
-      <router-link to="/">Home</router-link> |
-      <router-link to="/login">Login</router-link>
-    </nav>
-  </header>
-  <main>
+  <v-app>
+    <Navbar />
     <router-view />
-  </main>
+    <v-btn @click="showToast" color="primary" class="ma-4">Показать уведомление</v-btn>
+    <Toast />
+  </v-app>
 </template>
 
 <script>
+import Navbar from './components/Navbar.vue'
+import { useToast } from 'vue-toastification'
+
 export default {
-  name: 'App'
-};
+  name: 'App',
+  components: { Navbar },
+  setup() {
+    const toast = useToast()
+
+    const showToast = () => {
+      toast.success('Успешно!')
+    }
+
+    return { showToast }
+  }
+}
 </script>
+
+<style>
+/* Ваши стили */
+</style>

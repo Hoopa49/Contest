@@ -2,12 +2,10 @@
 
 import axios from 'axios';
 
-// Можно вынести URL в переменную среды VITE_API_URL (настраивается в vite.config или .env)
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
 const api = axios.create({
-  baseURL
-});
+  baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true
+})
 
 // (Необязательно) Интерсептор на запрос,
 // чтоб автоматически подставлять токен, если он в localStorage

@@ -73,7 +73,7 @@
     methods: {
       async fetchVideos() {
         try {
-          const response = await api.get('/videos'); // Убедитесь, что бэкенд имеет GET /videos
+          const response = await api.get('/videos');
           this.videos = response.data;
         } catch (error) {
           console.error('Ошибка при получении видео:', error);
@@ -82,7 +82,7 @@
       },
       async addVideo() {
         try {
-          await api.post('/videos', this.newVideo); // Убедитесь, что бэкенд имеет POST /videos и защищён
+          await api.post('/videos', this.newVideo);
           this.showAddForm = false;
           this.newVideo = { title: '', url: '', source: '' };
           this.fetchVideos();
@@ -98,7 +98,7 @@
       },
       async updateVideo() {
         try {
-          await api.put(`/videos/${this.editVideoData.id}`, this.editVideoData); // Убедитесь, что бэкенд имеет PUT /videos/:id и защищён
+          await api.put(`/videos/${this.editVideoData.id}`, this.editVideoData);
           this.showEditForm = false;
           this.editVideoData = {};
           this.fetchVideos();
@@ -111,7 +111,7 @@
       async deleteVideo(id) {
         if (!confirm('Вы уверены, что хотите удалить это видео?')) return;
         try {
-          await api.delete(`/videos/${id}`); // Убедитесь, что бэкенд имеет DELETE /videos/:id и защищён
+          await api.delete(`/videos/${id}`);
           this.fetchVideos();
           alert('Видео удалено успешно!');
         } catch (error) {
@@ -128,5 +128,8 @@
   
   <style scoped>
   /* Добавьте стили по необходимости */
+  button {
+    margin-left: 10px;
+  }
   </style>
   

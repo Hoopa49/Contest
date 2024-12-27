@@ -4,8 +4,6 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-
-// Импортируем модель User из "connection.js"
 const { User } = require('../models/Connection');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_key'; 
@@ -14,43 +12,39 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_key';
 // -------------------- РЕГИСТРАЦИЯ (POST /register) --------------------
 router.post('/register', async (req, res) => {
   try {
-    // Из тела запроса берём email, password, role
     const { email, password, role } = req.body;
 
-    // 1) Проверка: все ли поля пришли
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ error: 'Email и пароль обязательны.' });
     }
 
-    // 2) Проверка, нет ли пользователя с таким email
+    // Проверяем, существует ли уже пользователь
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ error: 'User with this email already exists' });
+      return res.status(400).json({ error: 'Пользователь с таким email уже существует.' });
     }
 
-    // 3) Хешируем пароль
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // Хэшируем пароль
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4) Создаём нового пользователя в БД
+    // Создаём нового пользователя
     const newUser = await User.create({
       email,
       password: hashedPassword,
-      role: role || 'user'
+      role: role || 'user' // По умолчанию роль 'user'
     });
 
-    // 5) Возвращаем успешный ответ
     return res.status(201).json({
-      message: 'User registered successfully',
-      user: {
+      message: 'Пользователь успешно зарегистрирован.',
+      data: {
         id: newUser.id,
         email: newUser.email,
         role: newUser.role
       }
     });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Internal server error' });
+  } catch (error) {
+    console.error('Ошибка при регистрации пользователя:', error);
+    return res.status(500).json({ error: 'Не удалось зарегистрировать пользователя.' });
   }
 });
 
