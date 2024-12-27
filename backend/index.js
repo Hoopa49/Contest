@@ -1,36 +1,51 @@
 // backend/index.js
+
+require('dotenv').config(); // если используете .env
 const express = require('express');
 const app = express();
-const PORT = 3000;
 
-// 1) Подключаем sequelize
+// Импортируем Sequelize из config/db
 const sequelize = require('./config/db');
 
-// 2) Подключаем модель
-const Video = require('./models/Video');
+// Импортируем модели (и ассоциации) из models/connection.js
+// (где прописано Video.hasMany(Contest), Contest.belongsTo(Video), и т.д.)
+const { Video, Contest } = require('./models/Connection');
 
-// Мы, кстати, можем и другие модели так же подключать (Contest, User, и т.д.)
+// Порт, на котором будет запускаться приложение
+const PORT = 3000;
+
+// Подключаем middleware для распознавания JSON
 app.use(express.json());
-// Подключаем ваши роуты
+
+// Подключаем роуты
 const testRoutes = require('./routes/testRoutes');
 app.use('/', testRoutes);
 
-// Функция для старта сервера и синхронизации БД
+const contestRoutes = require('./routes/contestRoutes');
+app.use('/', contestRoutes);
+
+const authRoutes = require('./routes/authRoutes');
+app.use('/', authRoutes);
+
+// Функция запуска приложения
 async function startServer() {
   try {
-    // 3) Делаем sync: создает таблицы, если их нет
-    //    force: true - пересоздавать таблицы при каждом запуске (для разработчика ок),
-    //    но в продакшне надо быть осторожным.
-    await sequelize.sync({ force: false }); 
+    // ВАЖНО: Один раз синхронизируем БД
+    // alter: true попытается обновить структуру таблиц без потери данных,
+    // force: true — полностью пересоздаст таблицы (сотрёт данные).
+    // Обычно в dev можно использовать alter: true, в продакшене — миграции.
+    await sequelize.sync({ alter: true });
     console.log('Database synced!');
 
-    // 4) Запускаем сервер
+    // Стартуем сервер
     app.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}`);
     });
+
   } catch (err) {
     console.error('Failed to sync DB:', err);
   }
 }
 
+// Вызываем функцию старта
 startServer();
