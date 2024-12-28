@@ -4,8 +4,8 @@
     <v-toolbar-title>Contest App</v-toolbar-title>
     <v-spacer></v-spacer>
     <v-btn text to="/">Главная</v-btn>
-    <v-btn text to="/videos" v-if="isAdmin">Видео</v-btn>
-    <v-btn text to="/contests" v-if="isAdmin">Конкурсы</v-btn>
+    <v-btn text to="/videos" >Видео</v-btn>
+    <v-btn text to="/contests">Конкурсы</v-btn>
     <v-btn text to="/login" v-if="!isAuthenticated">Вход</v-btn>
     <v-btn text to="/register" v-if="!isAuthenticated">Регистрация</v-btn>
     <v-btn text @click="logout" v-if="isAuthenticated">Выйти</v-btn>

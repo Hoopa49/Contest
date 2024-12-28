@@ -3,8 +3,6 @@
   <v-app>
     <Navbar />
     <router-view />
-    <v-btn @click="showToast" color="primary" class="ma-4">Показать уведомление</v-btn>
-    <Toast />
   </v-app>
 </template>
 
