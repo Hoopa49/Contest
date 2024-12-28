@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 4) Установим зависимости
-RUN npm install
+RUN npm install bcryptjs jsonwebtoken
 
 # 5) Скопируем весь код (например, /backend) внутрь контейнера
 COPY . .

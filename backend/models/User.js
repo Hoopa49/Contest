@@ -1,31 +1,27 @@
-// backend/models/User.js
-
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db'); // Ваш экземпляр Sequelize
-
-const User = sequelize.define('User', {
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,  // e-mail не должен дублироваться
-    validate: {
-      isEmail: true // встроенная проверка формата
+module.exports = (sequelize, DataTypes) => {
+  const User = sequelize.define('User', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    role: {
+      type: DataTypes.STRING,
+      defaultValue: 'user'
     }
-  },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false
-    // Внимание: Это будет хранить хеш (не сам пароль)
-  },
-  role: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: 'user' 
-    // Можно хранить "user", "admin" и т. д.
-  }
-}, {
-  tableName: 'users',
-  timestamps: true // createdAt, updatedAt
-});
+  }, {
+    tableName: 'Users',
+    timestamps: true
+  });
 
-module.exports = User;
+  return User;
+};

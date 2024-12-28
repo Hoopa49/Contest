@@ -45,25 +45,41 @@ const router = createRouter({
 
 // Защита маршрутов, требующих авторизации
 router.beforeEach(async (to, from, next) => {
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const roles = to.meta.roles;
   const authStore = useAuthStore();
+  const isAuthenticated = authStore.isAuthenticated;
 
-  if (requiresAuth) {
-    if (!authStore.isAuthenticated) {
-      return next({ name: 'Login' });
-    }
-
-    // Получаем данные пользователя из токена, если ещё не получены
-    if (!authStore.user) {
+  // Если есть токен, но нет данных пользователя, пробуем их получить
+  if (isAuthenticated && !authStore.currentUser) {
+    try {
       await authStore.fetchUser();
-    }
-
-    if (roles && !roles.includes(authStore.user.role)) {
-      return next({ name: 'Home' });
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      // В случае ошибки очищаем авторизацию
+      authStore.clearAuth();
     }
   }
-  next();
+
+  // Если маршрут требует авторизации
+  if (to.meta.requiresAuth) {
+    if (!isAuthenticated) {
+      // Перенаправляем на страницу входа
+      next({ name: 'Login', query: { redirect: to.fullPath } });
+    } else {
+      // Проверяем роль, если указана
+      if (to.meta.role && authStore.currentUser?.role !== to.meta.role) {
+        next({ name: 'Home' }); // или страница с ошибкой доступа
+      } else {
+        next();
+      }
+    }
+  } else {
+    // Если пользователь авторизован и пытается зайти на страницу входа/регистрации
+    if (isAuthenticated && (to.name === 'Login' || to.name === 'Register')) {
+      next({ name: 'Home' });
+    } else {
+      next();
+    }
+  }
 });
 
 export default router;

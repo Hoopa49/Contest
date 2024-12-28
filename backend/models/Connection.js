@@ -1,21 +1,62 @@
-// models/connection.js
+const { Sequelize, DataTypes } = require('sequelize');
 
-const Video = require('./Video');
-const Contest = require('./Contest');
-const User = require('./User');
+const sequelize = new Sequelize(
+  process.env.POSTGRES_DB,
+  process.env.POSTGRES_USER,
+  process.env.POSTGRES_PASSWORD,
+  {
+    host: process.env.POSTGRES_HOST || 'postgres', // изменено на postgres
+    port: process.env.POSTGRES_PORT || 5432,
+    dialect: 'postgres',
+    logging: console.log,
+    define: {
+      timestamps: true,
+      freezeTableName: true
+    },
+    retry: {
+      max: 5, // максимальное количество попыток
+      timeout: 3000 // таймаут между попытками в миллисекундах
+    }
+  }
+);
 
-// Настраиваем связь один-ко-многим (One-to-Many):
-// 1) Один Video может иметь много Contests
-Video.hasMany(Contest, {
+// Проверка подключения
+sequelize
+  .authenticate()
+  .then(() => {
+    console.log('Database connection has been established successfully.');
+  })
+  .catch(err => {
+    console.error('Unable to connect to the database:', err);
+  });
+
+const User = require('./User')(sequelize, DataTypes);
+const Video = require('./Video')(sequelize, DataTypes);
+const Contest = require('./Contest')(sequelize, DataTypes);
+
+// Определяем связи
+Video.hasMany(Contest, { 
   foreignKey: 'videoId',
-  as: 'contests',    // алиас для доступа, например video.getContests()
+  constraints: false
+});
+Contest.belongsTo(Video, { 
+  foreignKey: 'videoId',
+  constraints: false
 });
 
-// 2) Один Contest принадлежит конкретному Video
-Contest.belongsTo(Video, {
-  foreignKey: 'videoId',
-  as: 'video',       // алиас для доступа, например contest.getVideo()
-});
+// Проверяем подключение
+sequelize
+  .authenticate()
+  .then(() => {
+    console.log('Database connection has been established successfully.');
+  })
+  .catch(err => {
+    console.error('Unable to connect to the database:', err);
+  });
 
-// Экспортируем обе модели
-module.exports = { Video, Contest, User };
+module.exports = {
+  sequelize,
+  User,
+  Video,
+  Contest
+};

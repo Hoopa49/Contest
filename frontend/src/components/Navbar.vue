@@ -1,40 +1,61 @@
-<!-- frontend/src/components/Navbar.vue -->
 <template>
   <v-app-bar app color="primary" dark>
     <v-toolbar-title>Contest App</v-toolbar-title>
+
     <v-spacer></v-spacer>
-    <v-btn text to="/">Главная</v-btn>
-    <v-btn text to="/videos" >Видео</v-btn>
-    <v-btn text to="/contests">Конкурсы</v-btn>
-    <v-btn text to="/login" v-if="!isAuthenticated">Вход</v-btn>
-    <v-btn text to="/register" v-if="!isAuthenticated">Регистрация</v-btn>
-    <v-btn text @click="logout" v-if="isAuthenticated">Выйти</v-btn>
+
+    <template v-if="authStore.isAuthenticated">
+      <v-btn text to="/contests">
+        Конкурсы
+      </v-btn>
+      <v-btn text to="/videos">
+        Видео
+      </v-btn>
+      <v-btn text @click="handleLogout">
+        Выйти
+      </v-btn>
+    </template>
+    <template v-else>
+      <v-btn text to="/login">
+        Войти
+      </v-btn>
+      <v-btn text to="/register">
+        Регистрация
+      </v-btn>
+    </template>
   </v-app-bar>
 </template>
 
 <script>
-import { useAuthStore } from '../stores/auth.js';
+import { useAuthStore } from '../stores/auth';
+import { useRouter } from 'vue-router';
 
 export default {
   name: 'Navbar',
+  
   setup() {
     const authStore = useAuthStore();
-    return {
-      isAuthenticated: authStore.isAuthenticated,
-      isAdmin: authStore.user?.role === 'admin'
+    const router = useRouter();
+
+    const handleLogout = async () => {
+      try {
+        authStore.logout();
+        await router.push('/login');
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
     };
-  },
-  methods: {
-    logout() {
-      const authStore = useAuthStore();
-      authStore.clearToken();
-      this.$router.push('/login');
-      alert('Вы вышли из системы.');
-    }
+
+    return {
+      authStore,
+      handleLogout
+    };
   }
-};
+}
 </script>
 
 <style scoped>
-/* Добавьте дополнительные стили при необходимости */
+.v-toolbar-title {
+  cursor: pointer;
+}
 </style>

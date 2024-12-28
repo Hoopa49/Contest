@@ -1,25 +1,44 @@
-<!-- frontend/src/components/LoginForm.vue -->
 <template>
   <v-container>
     <v-row justify="center">
       <v-col cols="12" sm="8" md="4">
         <v-card>
-          <v-card-title>Вход</v-card-title>
+          <v-card-title class="text-center">
+            Вход
+          </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="loginUser">
               <v-text-field
-                v-model="email"
+                v-model="formData.email"
                 label="Email"
+                required
                 type="email"
-                required
               ></v-text-field>
+
               <v-text-field
-                v-model="password"
+                v-model="formData.password"
                 label="Пароль"
-                type="password"
                 required
+                type="password"
               ></v-text-field>
-              <v-btn color="primary" type="submit">Войти</v-btn>
+
+              <v-alert
+                v-if="error"
+                type="error"
+                class="mt-3"
+              >
+                {{ error }}
+              </v-alert>
+
+              <v-btn
+                type="submit"
+                color="primary"
+                block
+                class="mt-4"
+                :loading="loading"
+              >
+                Войти
+              </v-btn>
             </v-form>
           </v-card-text>
         </v-card>
@@ -29,47 +48,51 @@
 </template>
 
 <script>
-import api from '../services/backendApi.js';
-import { useAuthStore } from '../stores/auth.js';
-import { useToast } from 'vue-toastification';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
+import api from '../services/backendApi';
 
 export default {
   name: 'LoginForm',
-  data() {
-    return {
+  
+  setup() {
+    const router = useRouter();
+    const authStore = useAuthStore();
+    const error = ref('');
+    const loading = ref(false);
+    const formData = ref({
       email: '',
       password: ''
-    };
-  },
-  setup() {
-    const authStore = useAuthStore();
-    const toast = useToast();
-    return { authStore, toast };
-  },
-  methods: {
-    async loginUser() {
+    });
+
+    const loginUser = async () => {
+      loading.value = true;
+      error.value = '';
+      
       try {
-        const response = await api.post('/login', {
-          email: this.email,
-          password: this.password
+        const response = await api.post('/api/auth/login', {
+          email: formData.value.email,
+          password: formData.value.password
         });
-        const { token, user } = response.data;
 
-        // Сохраняем токен в Pinia store
-        this.authStore.setToken(token);
-        this.authStore.user = user;
-
-        this.toast.success(`Добро пожаловать, ${user.email}!`);
-        this.$router.push('/');
+        await authStore.setToken(response.data.token);
+        await authStore.fetchUser();
+        await router.push('/contests');
       } catch (err) {
-        console.error(err.response?.data || err.message);
-        this.toast.error('Вход не удался: ' + (err.response?.data?.error || err.message));
+        console.error('Login error:', err);
+        error.value = err.response?.data?.error || 'Ошибка при входе';
+      } finally {
+        loading.value = false;
       }
-    }
+    };
+
+    return {
+      formData,
+      error,
+      loading,
+      loginUser
+    };
   }
 };
 </script>
-
-<style scoped>
-/* Добавьте стили по необходимости */
-</style>

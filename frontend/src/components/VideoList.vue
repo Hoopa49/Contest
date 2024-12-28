@@ -1,135 +1,109 @@
-<!-- frontend/src/components/VideoList.vue -->
 <template>
-    <div>
-      <h2>Список Видео</h2>
-      <button @click="showAddForm = true">Добавить Видео</button>
+  <v-container>
+    <v-row>
+      <v-col cols="12">
+        <h2 class="text-h4 mb-4">Видео</h2>
+        
+        <!-- Загрузка -->
+        <v-progress-circular
+          v-if="loading"
+          indeterminate
+          color="primary"
+        ></v-progress-circular>
+
+        <!-- Ошибка -->
+        <v-alert
+          v-if="error"
+          type="error"
+          class="mb-4"
+        >
+          {{ error }}
+        </v-alert>
+
+        <!-- Список видео -->
+        <v-row v-if="!loading && !error">
+          <v-col 
+            v-for="video in videos" 
+            :key="video.id"
+            cols="12"
+            sm="6"
+            md="4"
+          >
+            <v-card>
+              <v-card-title>{{ video.title }}</v-card-title>
+              <v-card-text>
+                <div>Автор: {{ video.author }}</div>
+                <div>Источник: {{ video.source }}</div>
+                <div>Дата публикации: {{ formatDate(video.publicationDate) }}</div>
+              </v-card-text>
+              <v-card-actions>
+                <v-btn
+                  color="primary"
+                  :href="video.link"
+                  target="_blank"
+                  text
+                >
+                  Смотреть
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <!-- Нет видео -->
+        <v-alert
+          v-if="!loading && !error && videos.length === 0"
+          type="info"
+          class="mb-4"
+        >
+          Видео не найдены
+        </v-alert>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script>
+import api from '../services/backendApi';
+import { useToast } from 'vue-toastification';
+
+export default {
+  name: 'VideoList',
+  setup() {
+    const toast = useToast();
+    return { toast }
+  },
+  data() {
+    return {
+      videos: [],
+      loading: false,
+      error: null
+    }
+  },
+  methods: {
+    async fetchVideos() {
+      this.loading = true;
+      this.error = null;
       
-      <!-- Форма добавления видео -->
-      <div v-if="showAddForm">
-        <h3>Добавить новое Видео</h3>
-        <form @submit.prevent="addVideo">
-          <label>Название:
-            <input v-model="newVideo.title" type="text" required />
-          </label><br/>
-          <label>URL:
-            <input v-model="newVideo.url" type="text" required />
-          </label><br/>
-          <label>Источник:
-            <input v-model="newVideo.source" type="text" required />
-          </label><br/>
-          <button type="submit">Сохранить</button>
-          <button type="button" @click="showAddForm = false">Отмена</button>
-        </form>
-      </div>
-      
-      <!-- Список видео -->
-      <ul>
-        <li v-for="video in videos" :key="video.id">
-          <strong>{{ video.title }}</strong> — {{ video.source }}
-          <a :href="video.url" target="_blank">Смотреть</a>
-          <button @click="editVideo(video)">Редактировать</button>
-          <button @click="deleteVideo(video.id)">Удалить</button>
-        </li>
-      </ul>
-      
-      <!-- Форма редактирования видео -->
-      <div v-if="showEditForm">
-        <h3>Редактировать Видео</h3>
-        <form @submit.prevent="updateVideo">
-          <label>Название:
-            <input v-model="editVideoData.title" type="text" required />
-          </label><br/>
-          <label>URL:
-            <input v-model="editVideoData.url" type="text" required />
-          </label><br/>
-          <label>Источник:
-            <input v-model="editVideoData.source" type="text" required />
-          </label><br/>
-          <button type="submit">Обновить</button>
-          <button type="button" @click="showEditForm = false">Отмена</button>
-        </form>
-      </div>
-    </div>
-  </template>
-  
-  <script>
-  import api from '../services/backendApi.js';
-  
-  export default {
-    name: 'VideoList',
-    data() {
-      return {
-        videos: [],
-        showAddForm: false,
-        newVideo: {
-          title: '',
-          url: '',
-          source: ''
-        },
-        showEditForm: false,
-        editVideoData: {}
-      };
-    },
-    methods: {
-      async fetchVideos() {
-        try {
-          const response = await api.get('/videos');
-          this.videos = response.data;
-        } catch (error) {
-          console.error('Ошибка при получении видео:', error);
-          alert('Не удалось загрузить видео.');
-        }
-      },
-      async addVideo() {
-        try {
-          await api.post('/videos', this.newVideo);
-          this.showAddForm = false;
-          this.newVideo = { title: '', url: '', source: '' };
-          this.fetchVideos();
-          alert('Видео добавлено успешно!');
-        } catch (error) {
-          console.error('Ошибка при добавлении видео:', error);
-          alert('Не удалось добавить видео.');
-        }
-      },
-      editVideo(video) {
-        this.editVideoData = { ...video };
-        this.showEditForm = true;
-      },
-      async updateVideo() {
-        try {
-          await api.put(`/videos/${this.editVideoData.id}`, this.editVideoData);
-          this.showEditForm = false;
-          this.editVideoData = {};
-          this.fetchVideos();
-          alert('Видео обновлено успешно!');
-        } catch (error) {
-          console.error('Ошибка при обновлении видео:', error);
-          alert('Не удалось обновить видео.');
-        }
-      },
-      async deleteVideo(id) {
-        if (!confirm('Вы уверены, что хотите удалить это видео?')) return;
-        try {
-          await api.delete(`/videos/${id}`);
-          this.fetchVideos();
-          alert('Видео удалено успешно!');
-        } catch (error) {
-          console.error('Ошибка при удалении видео:', error);
-          alert('Не удалось удалить видео.');
-        }
+      try {
+        console.log('Fetching videos...');
+        const response = await api.get('/api/videos'); 
+        this.videos = response.data;
+        console.log('Videos loaded:', this.videos);
+      } catch (error) {
+        console.error('Error loading videos:', error);
+        this.error = error.response?.data?.error || 'Ошибка загрузки видео';
+        this.toast.error(this.error);
+      } finally {
+        this.loading = false;
       }
     },
-    mounted() {
-      this.fetchVideos();
+    formatDate(date) {
+      return new Date(date).toLocaleDateString('ru-RU');
     }
-  };
-  </script>
-  
-  <style scoped>
-  /* Добавьте стили по необходимости */
-  button {
-    margin-left: 10px;
+  },
+  mounted() {
+    this.fetchVideos();
   }
-  </style>
-  
+}
+</script>

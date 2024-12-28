@@ -1,160 +1,151 @@
-<!-- frontend/src/components/ContestList.vue -->
 <template>
-  <div>
-    <h2>Список Конкурсов</h2>
-    <button @click="showAddForm = true">Добавить Конкурс</button>
-    
-    <!-- Форма добавления конкурса -->
-    <div v-if="showAddForm">
-      <h3>Добавить Новый Конкурс</h3>
-      <form @submit.prevent="addContest">
-        <label>Название:
-          <input v-model="newContest.title" type="text" required />
-        </label><br/>
-        <label>Приз:
-          <input v-model="newContest.prize" type="text" required />
-        </label><br/>
-        <label>Дата начала:
-          <input v-model="newContest.startDate" type="date" required />
-        </label><br/>
-        <label>Дата окончания:
-          <input v-model="newContest.endDate" type="date" required />
-        </label><br/>
-        <label>Условия:
-          <textarea v-model="newContest.conditions"></textarea>
-        </label><br/>
-        <label>Видео ID:
-          <input v-model="newContest.videoId" type="number" required />
-        </label><br/>
-        <button type="submit">Сохранить</button>
-        <button type="button" @click="showAddForm = false">Отмена</button>
-      </form>
-    </div>
-    
+  <div class="contest-list">
+    <!-- Кнопка добавления конкурса -->
+    <v-btn 
+      color="primary" 
+      @click="showAddForm = true"
+      class="mb-4"
+    >
+      Добавить конкурс
+    </v-btn>
+
     <!-- Список конкурсов -->
-    <ul>
-      <li v-for="contest in contests" :key="contest.id">
-        <strong>{{ contest.title }}</strong> — Приз: {{ contest.prize }}
-        <span>Дата: {{ formatDate(contest.startDate) }} - {{ formatDate(contest.endDate) }}</span>
-        <span>Видео ID: {{ contest.videoId }}</span>
-        <button @click="editContest(contest)">Редактировать</button>
-        <button @click="deleteContest(contest.id)">Удалить</button>
-      </li>
-    </ul>
-    
-    <!-- Форма редактирования конкурса -->
-    <div v-if="showEditForm">
-      <h3>Редактировать Конкурс</h3>
-      <form @submit.prevent="updateContest">
-        <label>Название:
-          <input v-model="editContestData.title" type="text" required />
-        </label><br/>
-        <label>Приз:
-          <input v-model="editContestData.prize" type="text" required />
-        </label><br/>
-        <label>Дата начала:
-          <input v-model="editContestData.startDate" type="date" required />
-        </label><br/>
-        <label>Дата окончания:
-          <input v-model="editContestData.endDate" type="date" required />
-        </label><br/>
-        <label>Условия:
-          <textarea v-model="editContestData.conditions"></textarea>
-        </label><br/>
-        <label>Видео ID:
-          <input v-model="editContestData.videoId" type="number" required />
-        </label><br/>
-        <button type="submit">Обновить</button>
-        <button type="button" @click="showEditForm = false">Отмена</button>
-      </form>
-    </div>
+    <v-list v-if="contests.length">
+      <v-list-item
+        v-for="contest in contests"
+        :key="contest.id"
+        class="mb-4"
+      >
+        <v-card width="100%">
+          <v-card-title>{{ contest.title }}</v-card-title>
+          <v-card-text>
+            <p>{{ contest.description }}</p>
+            <p>Начало: {{ formatDate(contest.startDate) }}</p>
+            <p>Окончание: {{ formatDate(contest.endDate) }}</p>
+          </v-card-text>
+          <v-card-actions>
+            <v-btn 
+              color="primary" 
+              @click="editContest(contest)"
+            >
+              Редактировать
+            </v-btn>
+            <v-btn 
+              color="error" 
+              @click="deleteContest(contest.id)"
+            >
+              Удалить
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-list-item>
+    </v-list>
+    <v-alert
+      v-else-if="!loading"
+      type="info"
+      text="Нет доступных конкурсов"
+    ></v-alert>
+
+    <!-- Индикатор загрузки -->
+    <v-progress-circular
+      v-if="loading"
+      indeterminate
+      color="primary"
+    ></v-progress-circular>
+
+    <!-- Форма добавления/редактирования -->
+    <v-dialog v-model="showAddForm" max-width="500px">
+      <v-card>
+        <v-card-title>
+          {{ editingContest ? 'Редактировать конкурс' : 'Добавить конкурс' }}
+        </v-card-title>
+        <v-card-text>
+          <!-- Форма будет добавлена позже -->
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script>
-import api from '../services/backendApi.js';
+import api from '../services/backendApi';
 
 export default {
   name: 'ContestList',
+  
   data() {
     return {
       contests: [],
+      loading: false,
+      error: null,
       showAddForm: false,
-      newContest: {
-        title: '',
-        prize: '',
-        startDate: '',
-        endDate: '',
-        conditions: '',
-        videoId: null
-      },
       showEditForm: false,
-      editContestData: {}
-    };
+      editingContest: null
+    }
   },
+
   methods: {
     async fetchContests() {
+      this.loading = true;
+      this.error = null;
       try {
-        const response = await api.get('/contest');
+        const response = await api.get('/api/contests');
         this.contests = response.data;
       } catch (error) {
         console.error('Ошибка при получении конкурсов:', error);
-        alert('Не удалось загрузить конкурсы.');
+        this.error = 'Не удалось загрузить конкурсы';
+      } finally {
+        this.loading = false;
       }
     },
-    async addContest() {
-      try {
-        await api.post('/contest', this.newContest);
-        this.showAddForm = false;
-        this.newContest = { title: '', prize: '', startDate: '', endDate: '', conditions: '', videoId: null };
-        this.fetchContests();
-        alert('Конкурс добавлен успешно!');
-      } catch (error) {
-        console.error('Ошибка при добавлении конкурса:', error);
-        alert('Не удалось добавить конкурс.');
-      }
+
+    formatDate(date) {
+      if (!date) return 'Не указано';
+      return new Date(date).toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     },
+
     editContest(contest) {
-      this.editContestData = { ...contest };
+      this.editingContest = { ...contest };
       this.showEditForm = true;
     },
-    async updateContest() {
-      try {
-        await api.put(`/contest/${this.editContestData.id}`, this.editContestData);
-        this.showEditForm = false;
-        this.editContestData = {};
-        this.fetchContests();
-        alert('Конкурс обновлен успешно!');
-      } catch (error) {
-        console.error('Ошибка при обновлении конкурса:', error);
-        alert('Не удалось обновить конкурс.');
-      }
-    },
+
     async deleteContest(id) {
-      if (!confirm('Вы уверены, что хотите удалить этот конкурс?')) return;
+      if (!confirm('Вы уверены, что хотите удалить этот конкурс?')) {
+        return;
+      }
+
       try {
-        await api.delete(`/contest/${id}`);
-        this.fetchContests();
-        alert('Конкурс удален успешно!');
+        await api.delete(`/api/contests/${id}`);
+        this.contests = this.contests.filter(c => c.id !== id);
       } catch (error) {
         console.error('Ошибка при удалении конкурса:', error);
-        alert('Не удалось удалить конкурс.');
+        // Добавьте обработку ошибки, например, показ уведомления
       }
-    },
-    formatDate(dateString) {
-      const options = { year: 'numeric', month: 'long', day: 'numeric' };
-      return new Date(dateString).toLocaleDateString(undefined, options);
     }
   },
+
   mounted() {
     this.fetchContests();
   }
-};
+}
 </script>
 
 <style scoped>
-/* Добавьте стили по необходимости */
-button {
-  margin-left: 10px;
+.contest-list {
+  padding: 20px;
+}
+
+.v-list-item {
+  margin-bottom: 16px;
+}
+
+.v-card {
+  width: 100%;
 }
 </style>

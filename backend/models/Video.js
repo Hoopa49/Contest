@@ -1,30 +1,26 @@
-// backend/models/Video.js
+module.exports = (sequelize, DataTypes) => {
+  const Video = sequelize.define('Video', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    link: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    author: {
+      type: DataTypes.STRING,
+      allowNull: true
+    }
+  }, {
+    tableName: 'Videos',
+    timestamps: true
+  });
 
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db'); // <-- тот самый файл db.js
-
-const Video = sequelize.define('Video', {
-  // id будет создан автоматически (PRIMARY KEY)
-  title: {
-    type: DataTypes.STRING, // VARCHAR(255)
-    allowNull: false,       // NOT NULL
-  },
-  url: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  source: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: 'Unknown'
-  },
-  transcript: {
-    type: DataTypes.TEXT,
-    allowNull: true,        // можно оставить пустым
-  },
-}, {
-  tableName: 'videos', // название таблицы в БД
-  timestamps: true,    // включает поля createdAt, updatedAt
-});
-
-module.exports = Video;
+  return Video;
+};

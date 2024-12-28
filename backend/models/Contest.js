@@ -1,32 +1,38 @@
-// models/Contest.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db'); // ваш объект Sequelize
+module.exports = (sequelize, DataTypes) => {
+  const Contest = sequelize.define('Contest', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: true // временно разрешим null
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    startDate: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    endDate: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    videoId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Videos',
+        key: 'id'
+      }
+    }
+  }, {
+    tableName: 'Contests',
+    timestamps: true
+  });
 
-// Опишем поля
-const Contest = sequelize.define('Contest', {
-  title: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  prize: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  startDate: {
-    type: DataTypes.DATE,
-    allowNull: false
-  },
-  endDate: {
-    type: DataTypes.DATE,
-    allowNull: false
-  },
-  conditions: {
-    type: DataTypes.TEXT,
-    allowNull: true // можно сделать тоже обязательным, если нужно
-  }
-}, {
-  tableName: 'contests',
-  timestamps: true
-});
-
-module.exports = Contest;
+  return Contest;
+};

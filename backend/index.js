@@ -1,67 +1,45 @@
-// backend/index.js
-
-require('dotenv').config(); // если используете .env
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
+const { sequelize } = require('./models/Connection');
+
+
 const app = express();
 
-// Импортируем Sequelize из config/db
-const sequelize = require('./config/db');
-
-// Импортируем модели (и ассоциации) из models/connection.js
-// (где прописано Video.hasMany(Contest), Contest.belongsTo(Video), и т.д.)
-const { Video, Contest } = require('./models/Connection');
-
-// Порт, на котором будет запускаться приложение
-const PORT = 3000;
-
-// Разрешаем запросы с других доменов
-app.use(cors({
-  origin: 'http://localhost:5173',  // адрес вашего фронтенда
-  credentials: true                 // если планируете передавать куки/сессии
-}));
-
-// Подключаем middleware для распознавания JSON
-app.use(express.json());
-
-// Подключаем роуты
-const videoRoutes = require('./routes/videoRoutes'); // подключаем новые маршруты
-app.use('/', videoRoutes);
-
-const contestRoutes = require('./routes/contestRoutes');
-app.use('/', contestRoutes);
-
-const authRoutes = require('./routes/authRoutes');
-app.use('/', authRoutes);
-
-// Раздача статических файлов фронтенда
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-// Обработка всех остальных запросов и отдача index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
+// Middleware для логирования
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+  next();
 });
 
-// Функция запуска приложения
-async function startServer() {
-  try {
-    // ВАЖНО: Один раз синхронизируем БД
-    // alter: true попытается обновить структуру таблиц без потери данных,
-    // force: true — полностью пересоздаст таблицы (сотрёт данные).
-    // Обычно в dev можно использовать alter: true, в продакшене — миграции.
-    await sequelize.sync({ alter: true });
-    console.log('Database synced!');
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
 
-    // Стартуем сервер
-    app.listen(PORT, () => {
-      console.log(`Server running at http://localhost:${PORT}`);
-    });
+app.use(express.json());
 
-  } catch (err) {
-    console.error('Failed to sync DB:', err);
-  }
-}
+const authRoutes = require('./routes/authRoutes');
+const videoRoutes = require('./routes/videoRoutes');
+const contestRoutes = require('./routes/contestRoutes');
 
-// Вызываем функцию старта
-startServer();
+// Подключаем роуты
+app.use('/api', authRoutes);  // Добавляем префикс /api
+app.use('/api', videoRoutes);
+app.use('/api', contestRoutes);
+
+// Добавляем логирование запросов
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something broke!' });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

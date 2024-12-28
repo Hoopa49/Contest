@@ -5,13 +5,16 @@ services:
     image: postgres:15
     container_name: contest_postgres
     environment:
-      POSTGRES_USER: contest_user
-      POSTGRES_PASSWORD: contest_pass
-      POSTGRES_DB: contest_db
+      - POSTGRES_DB=contest_db
+      - POSTGRES_USER=contest_user
+      - POSTGRES_PASSWORD=contest_pass
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d  # добавьте эту строку
+    networks:
+      - contest_network
 
   # Сервис Node.js (backend)
   backend:
@@ -21,16 +24,16 @@ services:
     container_name: contest_backend
     ports:
       - "3000:3000"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=contest_db
+      - POSTGRES_USER=contest_user
+      - POSTGRES_PASSWORD=contest_pass
+      - POSTGRES_PORT=5432
     depends_on:
       - postgres
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: contest_user
-      DB_PASS: contest_pass
-      DB_NAME: contest_db
-      JWT_SECRET: MY_ULTRA_SECRET
-
+    networks:
+      - contest_network
   # Сервис фронтенда (Vue)
   frontend:
     build:
@@ -41,6 +44,10 @@ services:
       - "8080:80" # Nginx внутри контейнера слушает 80
     depends_on:
       - backend
+
+networks:
+  contest_network:
+    driver: bridge
 
 volumes:
   postgres_data:

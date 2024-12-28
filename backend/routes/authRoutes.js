@@ -1,90 +1,125 @@
-// backend/routes/authRoutes.js
-
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models/Connection');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_key'; 
-// В идеале хранить секрет в .env
-
-// -------------------- РЕГИСТРАЦИЯ (POST /register) --------------------
-router.post('/register', async (req, res) => {
+// Middleware для проверки JWT токена
+const authenticateToken = async (req, res, next) => {
   try {
-    const { email, password, role } = req.body;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email и пароль обязательны.' });
+    if (!token) {
+      return res.status(401).json({ error: 'Отсутствует токен авторизации' });
     }
 
-    // Проверяем, существует ли уже пользователь
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.error('Auth error:', error);
+    return res.status(403).json({ error: 'Недействительный токен' });
+  }
+};
+
+// Роут для регистрации
+// Роут для регистрации
+router.post('/auth/register', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Проверяем наличие обязательных полей
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Email и пароль обязательны' 
+      });
+    }
+
+    // Проверяем, существует ли пользователь
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: 'Пользователь с таким email уже существует.' });
+      return res.status(400).json({ 
+        error: 'Пользователь с таким email уже существует' 
+      });
     }
 
-    // Хэшируем пароль
+    // Хешируем пароль
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Создаём нового пользователя
-    const newUser = await User.create({
+    // Создаем пользователя
+    const user = await User.create({
       email,
       password: hashedPassword,
-      role: role || 'user' // По умолчанию роль 'user'
+      role: 'user'
     });
 
-    return res.status(201).json({
-      message: 'Пользователь успешно зарегистрирован.',
-      data: {
-        id: newUser.id,
-        email: newUser.email,
-        role: newUser.role
+    res.status(201).json({
+      message: 'Регистрация успешна',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role
       }
     });
+
   } catch (error) {
-    console.error('Ошибка при регистрации пользователя:', error);
-    return res.status(500).json({ error: 'Не удалось зарегистрировать пользователя.' });
+    console.error('Registration error:', error);
+    res.status(500).json({ 
+      error: 'Ошибка при регистрации',
+      details: error.message 
+    });
   }
 });
 
-// -------------------- ЛОГИН (POST /login) --------------------
-router.post('/login', async (req, res) => {
+// Роут для входа
+router.post('/auth/login', async (req, res) => {
   try {
-    // Берём email и password из тела запроса
+    console.log('Login attempt:', req.body);
     const { email, password } = req.body;
+
+    // Проверяем наличие email и password
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ 
+        error: 'Email и пароль обязательны' 
+      });
     }
 
-    // 1) Находим пользователя в БД по email
-    const user = await User.findOne({ where: { email } });
+    // Ищем пользователя
+    const user = await User.findOne({ 
+      where: { email },
+      attributes: ['id', 'email', 'password', 'role']
+    });
+
     if (!user) {
-      // Нет такого email
-      return res.status(401).json({ error: 'Invalid credentials' });
+      console.log('User not found:', email);
+      return res.status(401).json({ 
+        error: 'Неверный email или пароль' 
+      });
     }
 
-    // 2) Сравниваем пароль с хешем
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      // Пароль не совпал
-      return res.status(401).json({ error: 'Invalid credentials' });
+    // Проверяем пароль
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      console.log('Invalid password for user:', email);
+      return res.status(401).json({ 
+        error: 'Неверный email или пароль' 
+      });
     }
 
-    // 3) Генерируем JWT
-    // payload: userId, role
+    // Создаем токен
     const token = jwt.sign(
-      {
+      { 
         userId: user.id,
-        role: user.role
+        email: user.email,
+        role: user.role 
       },
-      JWT_SECRET,
-      { expiresIn: '1d' } // срок действия токена (1 день)
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
     );
 
-    // 4) Отправляем токен и информацию о пользователе
-    return res.json({
-      message: 'Login successful',
+    // Отправляем ответ
+    res.json({
       token,
       user: {
         id: user.id,
@@ -92,9 +127,38 @@ router.post('/login', async (req, res) => {
         role: user.role
       }
     });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Internal server error' });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      error: 'Ошибка сервера при авторизации',
+      details: error.message 
+    });
+  }
+});
+
+// Роут для получения профиля
+router.get('/auth/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.userId, {
+      attributes: ['id', 'email', 'role']
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ 
+      error: 'Ошибка при получении профиля',
+      details: error.message 
+    });
   }
 });
 
