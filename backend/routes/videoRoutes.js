@@ -1,87 +1,81 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { Video } = require('../models/Connection');
+const { Video } = require("../models/Connection");
+const youtubeApi = require("../utils/youtubeApi");
+const videoService = require("../services/videoService");
+const { authenticateToken } = require("./authRoutes");
 
-// Получить все видео
-router.get('/videos', async (req, res) => {
+// Анализ видео по URL
+router.post("/videos/analyze", authenticateToken, async (req, res) => {
   try {
+    const { url } = req.body;
+    const videoId = youtubeApi.extractVideoId(url);
+    if (!videoId) {
+      return res.status(400).json({ error: "Invalid YouTube URL" });
+    }
+
+    const video = await videoService.addVideoFromUrl({
+      link: url,
+      author: req.user.email,
+      source: "youtube"
+    });
+
+    res.status(201).json({
+      success: true,
+      data: video
+    });
+  } catch (error) {
+    console.error("Detailed error:", error);
+    res.status(500).json({
+      error: "Failed to analyze video",
+      details: error.message
+    });
+  }
+});
+
+// Получение всех видео с фильтрацией
+router.get("/videos", authenticateToken, async (req, res) => {
+  try {
+    const { status, isContest } = req.query;
+    const where = {};
+
+    if (status) {
+      where.status = status;
+    }
+    if (isContest === 'true') {
+      where.status = 'contest';
+    }
+
     const videos = await Video.findAll({
+      where,
       order: [['createdAt', 'DESC']]
     });
+
     res.json(videos);
   } catch (error) {
-    console.error('Error fetching videos:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch videos',
-      details: error.message 
-    });
+    console.error("Error fetching videos:", error);
+    res.status(500).json({ error: "Failed to fetch videos" });
   }
 });
 
-// Добавить новое видео
-router.post('/videos', async (req, res) => {
-  try {
-    const { title, link, author } = req.body;
-    const video = await Video.create({
-      title,
-      link,
-      author
-    });
-    res.status(201).json(video);
-  } catch (error) {
-    console.error('Error creating video:', error);
-    res.status(500).json({ 
-      error: 'Failed to create video',
-      details: error.message 
-    });
-  }
-});
-
-// Удалить видео
-router.delete('/videos/:id', async (req, res) => {
+// Обновление статуса видео
+router.patch("/videos/:id/status", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Video.destroy({
-      where: { id }
-    });
-    if (deleted) {
-      res.json({ message: 'Video deleted successfully' });
-    } else {
-      res.status(404).json({ error: 'Video not found' });
-    }
-  } catch (error) {
-    console.error('Error deleting video:', error);
-    res.status(500).json({ 
-      error: 'Failed to delete video',
-      details: error.message 
-    });
-  }
-});
+    const { status } = req.body;
 
-// Обновить видео
-router.put('/videos/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, link, author } = req.body;
-    
     const video = await Video.findByPk(id);
     if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
+      return res.status(404).json({ error: "Video not found" });
     }
 
-    await video.update({
-      title,
-      link,
-      author
-    });
+    video.status = status;
+    await video.save();
 
     res.json(video);
   } catch (error) {
-    console.error('Error updating video:', error);
-    res.status(500).json({ 
-      error: 'Failed to update video',
-      details: error.message 
-    });
+    console.error("Error updating video status:", error);
+    res.status(500).json({ error: "Failed to update video status" });
   }
 });
 

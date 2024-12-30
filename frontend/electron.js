@@ -10,11 +10,16 @@ function createWindow () {
     width: 800,
     height: 600,
     webPreferences: {
-      // preload: path.join(__dirname, 'preload.js') // Удалите, если не используете
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true
     }
   });
 
-  win.loadURL('https://example.com'); // Для теста используйте внешний URL
+  win.loadURL(process.env.NODE_ENV === 'development' 
+    ? 'http://localhost:8080' 
+    : `file://${path.join(__dirname, '../dist/index.html')}`
+  );
   win.on('closed', () => {
     console.log('Electron window closed');
   });

@@ -12,7 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d  # добавьте эту строку
+      # - ./backend/migrations:/docker-entrypoint-initdb.d  # добавьте эту строку
     networks:
       - contest_network
 

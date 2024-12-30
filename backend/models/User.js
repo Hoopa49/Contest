@@ -17,6 +17,11 @@ module.exports = (sequelize, DataTypes) => {
     role: {
       type: DataTypes.STRING,
       defaultValue: 'user'
+    },
+    // Добавляем поля для YouTube видео
+    videos: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      defaultValue: []
     }
   }, {
     tableName: 'Users',

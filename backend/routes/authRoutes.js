@@ -24,7 +24,6 @@ const authenticateToken = async (req, res, next) => {
 };
 
 // Роут для регистрации
-// Роут для регистрации
 router.post('/auth/register', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -162,4 +161,7 @@ router.get('/auth/profile', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {
+  router,
+  authenticateToken // экспортируем middleware
+};

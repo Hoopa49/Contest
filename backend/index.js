@@ -1,8 +1,7 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { sequelize } = require('./models/Connection');
-
-
+const { runYouTubeScheduler } = require('./schedulers/youtubeScheduler');
 const app = express();
 
 // Middleware для логирования
@@ -17,8 +16,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const authRoutes = require('./routes/authRoutes');
+const { router: authRoutes } = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const contestRoutes = require('./routes/contestRoutes');
 
@@ -26,6 +26,8 @@ const contestRoutes = require('./routes/contestRoutes');
 app.use('/api', authRoutes);  // Добавляем префикс /api
 app.use('/api', videoRoutes);
 app.use('/api', contestRoutes);
+
+runYouTubeScheduler();
 
 // Добавляем логирование запросов
 app.use((req, res, next) => {

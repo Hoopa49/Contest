@@ -8,7 +8,7 @@ const sequelize = new Sequelize(
     host: process.env.POSTGRES_HOST || 'postgres', // изменено на postgres
     port: process.env.POSTGRES_PORT || 5432,
     dialect: 'postgres',
-    logging: console.log,
+    logging: process.env.NODE_ENV === 'development' ? false : false, // Отключаем логирование SQL
     define: {
       timestamps: true,
       freezeTableName: true
@@ -43,16 +43,6 @@ Contest.belongsTo(Video, {
   foreignKey: 'videoId',
   constraints: false
 });
-
-// Проверяем подключение
-sequelize
-  .authenticate()
-  .then(() => {
-    console.log('Database connection has been established successfully.');
-  })
-  .catch(err => {
-    console.error('Unable to connect to the database:', err);
-  });
 
 module.exports = {
   sequelize,
