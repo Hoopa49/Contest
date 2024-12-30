@@ -33,6 +33,7 @@ sequelize
 const User = require('./User')(sequelize, DataTypes);
 const Video = require('./Video')(sequelize, DataTypes);
 const Contest = require('./Contest')(sequelize, DataTypes);
+const contentMakerYoutube = require('./contentMakerYoutube')(sequelize, DataTypes);
 
 // Определяем связи
 Video.hasMany(Contest, { 
@@ -46,6 +47,8 @@ Contest.belongsTo(Video, {
 
 module.exports = {
   sequelize,
+  DataTypes,
+  contentMakerYoutube,
   User,
   Video,
   Contest

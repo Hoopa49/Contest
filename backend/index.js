@@ -21,11 +21,14 @@ app.use(express.urlencoded({ extended: true }));
 const { router: authRoutes } = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const contestRoutes = require('./routes/contestRoutes');
+const contentMakerRoutes = require('./routes/contentMakerRoutes');
+
 
 // Подключаем роуты
-app.use('/api', authRoutes);  // Добавляем префикс /api
+app.use('/api', authRoutes); 
 app.use('/api', videoRoutes);
 app.use('/api', contestRoutes);
+app.use('/api', contentMakerRoutes);
 
 runYouTubeScheduler();
 

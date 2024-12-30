@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const videoService = require("../services/videoService");
 const youtubeApi = require("../utils/youtubeApi");
 const videoAnalyzer = require("../services/videoAnalyzerService");
+const contentMakerService = require('../services/contentMakerService');
 
 // Массив ключевых слов для поиска
 const SEARCH_KEYWORDS = [
@@ -38,6 +39,12 @@ async function processVideo(videoData) {
       return null;
     }
 
+    // Создаем или обновляем запись о контент-мейкере
+    await contentMakerService.findOrCreateMaker({
+        youtubeId: fullVideoInfo.channelId,
+        title: fullVideoInfo.channelTitle
+      });
+
     // Проверяем дату публикации
     const publishDate = new Date(videoData.publishedAt);
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -54,6 +61,10 @@ async function processVideo(videoData) {
 
     // Анализируем видео
     const analysisResult = videoAnalyzer.analyzeVideo(fullVideoInfo);
+
+    if (analysisResult.isContest) {
+        await contentMakerService.updateContestCount(fullVideoInfo.channelId);
+      }
 
     // Комбинируем данные
     const combinedData = {
@@ -223,15 +234,26 @@ async function runYouTubeScheduler() {
 
     for (const keyword of SEARCH_KEYWORDS) {
       console.log(`Поиск видео по ключевым словам: ${keyword}`);
+      let pageToken = '';
+      let processedVideos = 0;
+      const maxVideosPerKeyword = 50; // Увеличиваем количество видео для поиска
 
-      // Получаем список видео
-      const videos = await youtubeApi.searchVideos(keyword, 5, publishedAfter); // Ограничиваем до 5 видео на каждое ключевое слово
-
-      // Обрабатываем каждое видео
-      for (const video of videos) {
-        await processVideo(video);
+      while (processedVideos < maxVideosPerKeyword) {
+        const { videos, nextPageToken } = await youtubeApi.searchVideos(
+          keyword, 
+          10, // Увеличиваем количество видео на страницу
+          publishedAfter,
+          pageToken
+        );
+        for (const video of videos) {
+            const result = await processVideo(video);
+            if (result) processedVideos++;
+          }
+  
+          if (!nextPageToken) break;
+          pageToken = nextPageToken;
+        }
       }
-    }
 
     console.log("Задача по сбору видео с YouTube завершена.");
   } catch (error) {

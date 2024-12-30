@@ -58,6 +58,8 @@ class YouTubeAPI {
         commentCount: video.statistics.commentCount,
         categoryId: video.snippet.categoryId,
         comments: comments,
+        channelId: video.snippet.channelId,
+        channelTitle: video.snippet.channelTitle,
         thumbnails: video.snippet.thumbnails
       };
     } catch (error) {
@@ -72,7 +74,7 @@ class YouTubeAPI {
     return match ? match[1] : null;
   }
 
-  async searchVideos(query, maxResults = 5, publishedAfter) {
+  async searchVideos(query, maxResults = 5, publishedAfter, pageToken = '') {
     try {
       const response = await this.youtube.search.list({
         part: 'snippet',
@@ -80,20 +82,24 @@ class YouTubeAPI {
         type: 'video',
         maxResults: maxResults,
         publishedAfter: publishedAfter,
+        pageToken: pageToken,
         order: 'date' // Сортировка по дате публикаци
       });
   
-      return response.data.items.map(item => ({
-        videoId: item.id.videoId,
-        title: item.snippet.title,
-        description: item.snippet.description,
-        publishedAt: item.snippet.publishedAt,
-        channelTitle: item.snippet.channelTitle,
-        thumbnails: item.snippet.thumbnails
-      }));
+        return {
+        videos: response.data.items.map(item => ({
+          videoId: item.id.videoId,
+          title: item.snippet.title,
+          description: item.snippet.description,
+          publishedAt: item.snippet.publishedAt,
+          channelTitle: item.snippet.channelTitle,
+          thumbnails: item.snippet.thumbnails
+        })),
+        nextPageToken: response.data.nextPageToken
+      };  
     } catch (error) {
       console.error('Ошибка поиска видео:', error);
-      throw error;
+      return { videos: [], nextPageToken: null };
     }
   }
 }
