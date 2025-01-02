@@ -11,20 +11,52 @@ const authenticateToken = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ error: 'Отсутствует токен авторизации' });
+      return res.status(401).json({ 
+        error: 'Отсутствует токен авторизации',
+        needReauth: true 
+      });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.user = decoded;
-    next();
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+      req.user = decoded;
+      next();
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ 
+          error: 'Токен истек',
+          needReauth: true
+        });
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Auth error:', error);
     return res.status(403).json({ error: 'Недействительный токен' });
   }
 };
 
+const isAdmin = async (req, res, next) => {
+  try {
+    if (req.user && req.user.role === 'admin') {
+      next();
+    } else {
+      res.status(403).json({ error: 'Доступ запрещен. Требуются права администратора.' });
+    }
+  } catch (error) {
+    console.error('Admin check error:', error);
+    res.status(500).json({ error: 'Ошибка при проверке прав доступа' });
+  }
+};
+
+router.use((req, res, next) => {
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
+  next();
+});
+
 // Роут для регистрации
-router.post('/auth/register', async (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -72,7 +104,7 @@ router.post('/auth/register', async (req, res) => {
 });
 
 // Роут для входа
-router.post('/auth/login', async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     console.log('Login attempt:', req.body);
     const { email, password } = req.body;
@@ -114,7 +146,7 @@ router.post('/auth/login', async (req, res) => {
         role: user.role 
       },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
+      { expiresIn: '7d' }
     );
 
     // Отправляем ответ
@@ -137,7 +169,7 @@ router.post('/auth/login', async (req, res) => {
 });
 
 // Роут для получения профиля
-router.get('/auth/profile', authenticateToken, async (req, res) => {
+router.get('/profile', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.userId, {
       attributes: ['id', 'email', 'role']
@@ -163,5 +195,6 @@ router.get('/auth/profile', authenticateToken, async (req, res) => {
 
 module.exports = {
   router,
-  authenticateToken // экспортируем middleware
+  authenticateToken,
+  isAdmin
 };

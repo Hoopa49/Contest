@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const quotaYoutubeService = require('../services/quotaYoutubeService');
 
 class YouTubeAPI {
   constructor() {
@@ -14,39 +15,17 @@ class YouTubeAPI {
 
   async getVideoDetails(videoId) {
     try {
+      await quotaYoutubeService.checkQuota('videoDetails');
       const response = await this.youtube.videos.list({
         part: ['snippet', 'contentDetails', 'statistics'],
-        id: videoId,
-        key: process.env.YOUTUBE_API_KEY
+        id: videoId
       });
-  
-      // Проверяем наличие ответа и items
+
       if (!response?.data?.items?.[0]) {
         throw new Error(`Video ${videoId} not found or API error`);
       }
-  
-      const video = response.data.items[0];
-      let comments = [];
-      
-      try {
-        const commentsResponse = await this.youtube.commentThreads.list({
-          part: ['snippet'],
-          videoId: videoId,
-          maxResults: 100,
-        });
 
-        if (commentsResponse?.data?.items) {
-          comments = commentsResponse.data.items.map(item => ({
-            text: item.snippet.topLevelComment.snippet.textDisplay,
-            authorDisplayName: item.snippet.topLevelComment.snippet.authorDisplayName,
-            publishedAt: item.snippet.topLevelComment.snippet.publishedAt,
-            likeCount: item.snippet.topLevelComment.snippet.likeCount
-          }));
-        }
-      } catch (error) {
-        console.log(`Комментарии недоступны для видео ${videoId}: ${error.message}`);
-      }
-  
+      const video = response.data.items[0];
       return {
         title: video.snippet.title,
         description: video.snippet.description,
@@ -57,13 +36,12 @@ class YouTubeAPI {
         likeCount: video.statistics.likeCount,
         commentCount: video.statistics.commentCount,
         categoryId: video.snippet.categoryId,
-        comments: comments,
         channelId: video.snippet.channelId,
         channelTitle: video.snippet.channelTitle,
         thumbnails: video.snippet.thumbnails
       };
     } catch (error) {
-      console.error('YouTube API Error:', error.message);
+      console.error('Error getting video details:', error);
       throw error;
     }
   }
@@ -76,6 +54,7 @@ class YouTubeAPI {
 
   async searchVideos(query, maxResults = 5, publishedAfter, pageToken = '') {
     try {
+      await quotaYoutubeService.checkQuota('search');
       const response = await this.youtube.search.list({
         part: 'snippet',
         q: query,
@@ -100,6 +79,40 @@ class YouTubeAPI {
     } catch (error) {
       console.error('Ошибка поиска видео:', error);
       return { videos: [], nextPageToken: null };
+    }
+  }
+
+  async getBatchVideoDetails(videoIds) {
+    try {
+      await quotaYoutubeService.checkQuota('videoDetails');
+      const response = await this.youtube.videos.list({
+        part: ['snippet', 'contentDetails', 'statistics'],
+        id: videoIds.join(','),
+        maxResults: 50
+      });
+
+      if (!response?.data?.items) {
+        return [];
+      }
+
+      return response.data.items.map(video => ({
+        title: video.snippet.title,
+        description: video.snippet.description,
+        channelTitle: video.snippet.channelTitle,
+        publishedAt: video.snippet.publishedAt,
+        duration: video.contentDetails.duration,
+        viewCount: video.statistics.viewCount,
+        likeCount: video.statistics.likeCount,
+        commentCount: video.statistics.commentCount,
+        categoryId: video.snippet.categoryId,
+        channelId: video.snippet.channelId,
+        channelTitle: video.snippet.channelTitle,
+        thumbnails: video.snippet.thumbnails,
+        youtubeId: video.id
+      }));
+    } catch (error) {
+      console.error('Error getting batch video details:', error);
+      return [];
     }
   }
 }

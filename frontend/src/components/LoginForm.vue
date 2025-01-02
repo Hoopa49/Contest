@@ -7,7 +7,7 @@
             Вход
           </v-card-title>
           <v-card-text>
-            <v-form @submit.prevent="loginUser">
+            <v-form @submit.prevent="handleLogin">
               <v-text-field
                 v-model="formData.email"
                 label="Email"
@@ -51,36 +51,27 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import api from '../services/backendApi';
 
 export default {
-  name: 'LoginForm',
-  
   setup() {
     const router = useRouter();
     const authStore = useAuthStore();
-    const error = ref('');
     const loading = ref(false);
+    const error = ref('');
     const formData = ref({
       email: '',
       password: ''
     });
 
-    const loginUser = async () => {
+    const handleLogin = async () => {
       loading.value = true;
       error.value = '';
       
       try {
-        const response = await api.post('/api/auth/login', {
-          email: formData.value.email,
-          password: formData.value.password
-        });
-
-        await authStore.setToken(response.data.token);
-        await authStore.fetchUser();
-        await router.push('/contests');
+        await authStore.login(formData.value);
+        router.push('/'); // Перенаправление после успешного входа
       } catch (err) {
-        console.error('Login error:', err);
+        console.error('Login failed:', err);
         error.value = err.response?.data?.error || 'Ошибка при входе';
       } finally {
         loading.value = false;
@@ -89,9 +80,9 @@ export default {
 
     return {
       formData,
-      error,
       loading,
-      loginUser
+      error,
+      handleLogin
     };
   }
 };

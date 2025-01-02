@@ -6,18 +6,15 @@ import vuetify from 'vite-plugin-vuetify'
 export default defineConfig({
   plugins: [
     vue(),
-    vuetify({ autoImport: true }),
+    vuetify({ autoImport: true })
   ],
-  resolve: {
-    alias: {
-      '@': '/src',
-    },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': 'http://localhost:3000'
+    }
   },
-  css: {
-    preprocessorOptions: {
-      sass: {
-        // additionalData: `@import "@/styles/variables.sass"`,
-      },
-    },
-  },
+  build: {
+    chunkSizeWarningLimit: 1600
+  }
 })

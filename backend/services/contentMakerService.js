@@ -1,20 +1,20 @@
-const { sequelize, DataTypes } = require('../models/Connection');
-const contentMakerYoutube = require('../models/contentMakerYoutube')(sequelize, DataTypes);
+const { sequelize, ContentMakerYoutube } = require('../models/Connection');
 const { Op } = require('sequelize');
 
 class ContentMakerService {
-  async findOrCreateMaker(channelData) {
+  async findOrCreateMaker(channelData, transaction) {
     try {
-      let maker = await contentMakerYoutube.findOne({
-        where: { youtubeId: channelData.youtubeId }
+      let maker = await ContentMakerYoutube.findOne({
+        where: { youtubeId: channelData.youtubeId },
+        transaction
       });
 
       if (!maker) {
-        maker = await contentMakerYoutube.create({
+        maker = await ContentMakerYoutube.create({
           youtubeId: channelData.youtubeId,
           title: channelData.title,
           lastVideoCheck: new Date()
-        });
+        }, { transaction });
       }
 
       return maker;
@@ -26,7 +26,7 @@ class ContentMakerService {
 
   async updateContestCount(youtubeId) {
     try {
-      const maker = await contentMakerYoutube.findOne({
+      const maker = await ContentMakerYoutube.findOne({
         where: { youtubeId }
       });
 
@@ -41,7 +41,7 @@ class ContentMakerService {
 
   async getActiveContentMakers() {
     try {
-      return await contentMakerYoutube.findAll({
+      return await ContentMakerYoutube.findAll({
         where: { 
           isActive: true,
           contestCount: {

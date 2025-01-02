@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   # Сервис Postgres
   postgres:
@@ -12,9 +11,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # - ./backend/migrations:/docker-entrypoint-initdb.d  # добавьте эту строку
     networks:
       - contest_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contest_user -d contest_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Сервис Node.js (backend)
   backend:
@@ -31,7 +34,8 @@ services:
       - POSTGRES_PASSWORD=contest_pass
       - POSTGRES_PORT=5432
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - contest_network
   # Сервис фронтенда (Vue)
@@ -41,9 +45,18 @@ services:
       dockerfile: Dockerfile
     container_name: contest_frontend
     ports:
-      - "8080:80" # Nginx внутри контейнера слушает 80
+      - "8080:80"
     depends_on:
       - backend
+    networks:
+      - contest_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/nginx.conf:ro
 
 networks:
   contest_network:

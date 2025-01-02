@@ -1,19 +1,14 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3000', // Убираем /api отсюда
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true
 });
 
-// Добавляем перехватчик для логирования
-api.interceptors.request.use(request => {
-  console.log('Starting Request:', request.method, request.url);
-  return request;
-});
-
-// Добавляем перехватчик для токена
+// Перехватчик для добавления токена
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -22,11 +17,39 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-// Добавляем перехватчик для обработки ошибок
+// Перехватчик для добавления токена
 api.interceptors.response.use(
   response => response,
   error => {
-    console.error('API Error:', error.response?.data || error.message);
+    if (error.response?.data?.needReauth) {
+      // Перенаправляем на страницу логина
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Добавляем логирование для ответов
+api.interceptors.response.use(
+  response => {
+    console.log('Response interceptor:', {
+      status: response.status,
+      url: response.config.url,
+      data: response.data
+    });
+    return response;
+  },
+  error => {
+    console.error('Response error:', {
+      message: error.message,
+      config: {
+        method: error.config?.method,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        data: error.config?.data
+      },
+      response: error.response?.data
+    });
     return Promise.reject(error);
   }
 );

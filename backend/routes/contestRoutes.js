@@ -4,13 +4,14 @@ const { Contest, Video } = require("../models/Connection");
 const { authenticateToken } = require("./authRoutes");
 
 // Получение всех конкурсов
-router.get("/contests", async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   try {
     const contests = await Contest.findAll({
       include: [
         {
           model: Video,
           attributes: ["title", "link", "author", "description", "metadata"],
+          required: false
         },
       ],
       order: [["startDate", "DESC"]],
@@ -18,24 +19,30 @@ router.get("/contests", async (req, res) => {
     res.json(contests);
   } catch (error) {
     console.error("Error fetching contests:", error);
-    res.status(500).json({ error: "Failed to fetch contests" });
+    console.error("Detailed error:", error.stack);
+    res.status(500).json({ 
+      error: "Failed to fetch contests",
+      details: error.message 
+    });
   }
 });
 
 // Создание нового конкурса
-router.post("/contests", authenticateToken, async (req, res) => {
+router.post("/", authenticateToken, async (req, res) => {
   try {
     const { videoId, startDate, endDate, title, description } = req.body;
 
+    // Сначала проверяем существование видео
+    const video = await Video.findByPk(videoId);
+    if (!video) {
+      return res.status(404).json({ error: "Video not found" });
+    }
+
+    // Затем проверяем статус
     if (video.status !== "contest") {
       return res
         .status(400)
         .json({ error: "This video is not marked as a contest" });
-    }
-    // Проверяем существование видео
-    const video = await Video.findByPk(videoId);
-    if (!video) {
-      return res.status(404).json({ error: "Video not found" });
     }
 
     const contest = await Contest.create({
@@ -58,7 +65,7 @@ router.post("/contests", authenticateToken, async (req, res) => {
 });
 
 // Обновление конкурса
-router.patch("/contests/:id", authenticateToken, async (req, res) => {
+router.patch("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
@@ -77,7 +84,7 @@ router.patch("/contests/:id", authenticateToken, async (req, res) => {
 });
 
 // Удаление конкурса
-router.delete("/contests/:id", authenticateToken, async (req, res) => {
+router.delete("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const contest = await Contest.findByPk(id);

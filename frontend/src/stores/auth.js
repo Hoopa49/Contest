@@ -4,21 +4,22 @@ import api from '../services/backendApi';
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    token: localStorage.getItem('token') || null
+    token: localStorage.getItem('token')
   }),
 
   getters: {
     isAuthenticated: (state) => !!state.token,
-    userRole: (state) => state.user?.role
+    currentUser: (state) => state.user
   },
 
   actions: {
     async login(credentials) {
       try {
         const response = await api.post('/api/auth/login', credentials);
-        this.setToken(response.data.token);
-        await this.fetchUser();
-        return null;
+        this.token = response.data.token;
+        this.user = response.data.user;
+        localStorage.setItem('token', this.token);
+        return response.data;
       } catch (error) {
         console.error('Login error:', error);
         throw error;
@@ -29,25 +30,17 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await api.get('/api/auth/profile');
         this.user = response.data;
+        return response.data;
       } catch (error) {
-        console.error('Error fetching user:', error);
-        this.user = null;
+        console.error('Fetch user error:', error);
         throw error;
       }
-    },
-
-    setToken(token) {
-      this.token = token;
-      localStorage.setItem('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     },
 
     logout() {
       this.user = null;
       this.token = null;
       localStorage.removeItem('token');
-      delete api.defaults.headers.common['Authorization'];
-      this.router.push('/login');
     }
   }
 });

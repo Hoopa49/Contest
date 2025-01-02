@@ -5,6 +5,7 @@ import RegisterForm from '../components/RegisterForm.vue';
 import ContestList from '../components/ContestList.vue';
 import VideoList from '../components/VideoList.vue';
 import { useAuthStore } from '../stores/auth.js';
+import SchedulerStats from '../components/SchedulerStats.vue';
 
 const routes = [
   {
@@ -35,7 +36,20 @@ const routes = [
     component: ContestList,
     meta: { requiresAuth: true, roles: ['admin'] }
   },
-  // Другие маршруты
+  {
+    path: '/scheduler',
+    name: 'Scheduler',
+    component: () => import('../components/SchedulerControl.vue'),
+    meta: { 
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/stats',
+    name: 'stats',
+    component: SchedulerStats
+  }
 ];
 
 const router = createRouter({

@@ -53,6 +53,10 @@ module.exports = (sequelize, DataTypes) => {
     status: { 
       type: DataTypes.JSONB,
       allowNull: true
+    },
+    channelId: {
+      type: DataTypes.STRING,
+      allowNull: true
     }
   });
 

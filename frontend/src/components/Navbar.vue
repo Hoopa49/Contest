@@ -14,6 +14,13 @@
       <v-btn text @click="handleLogout">
         Выйти
       </v-btn>
+      <v-list-item
+        v-if="authStore.currentUser?.role === 'admin'"
+        to="/scheduler"
+        :prepend-icon="'mdi-cog'"
+      >
+        <v-list-item-title>Управление сборщиком</v-list-item-title>
+      </v-list-item>
     </template>
     <template v-else>
       <v-btn text to="/login">

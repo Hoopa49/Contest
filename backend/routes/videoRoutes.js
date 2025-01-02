@@ -34,7 +34,7 @@ router.post("/videos/analyze", authenticateToken, async (req, res) => {
 });
 
 // Получение всех видео с фильтрацией
-router.get("/videos", authenticateToken, async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   try {
     const { status, isContest } = req.query;
     const where = {};
@@ -59,7 +59,7 @@ router.get("/videos", authenticateToken, async (req, res) => {
 });
 
 // Обновление статуса видео
-router.patch("/videos/:id/status", authenticateToken, async (req, res) => {
+router.patch("//:id/status", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
+  const User = sequelize.define('Users', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -16,16 +16,14 @@ module.exports = (sequelize, DataTypes) => {
     },
     role: {
       type: DataTypes.STRING,
-      defaultValue: 'user'
-    },
-    // Добавляем поля для YouTube видео
-    videos: {
-      type: DataTypes.ARRAY(DataTypes.JSONB),
-      defaultValue: []
+      allowNull: false,
+      defaultValue: 'user',
+      validate: {
+        isIn: [['user', 'admin']]
+      }
     }
   }, {
-    tableName: 'Users',
-    timestamps: true
+    tableName: 'Users'
   });
 
   return User;
