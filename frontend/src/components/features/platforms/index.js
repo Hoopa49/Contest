@@ -1,0 +1,7 @@
+export { default as YouTubeIntegration } from './YouTubeIntegration.vue'
+export { default as InstagramIntegration } from './InstagramIntegration.vue'
+export { default as VKIntegration } from './VKIntegration.vue'
+export { default as TelegramIntegration } from './TelegramIntegration.vue'
+export { default as PlatformIntegrations } from './PlatformIntegrations.vue' 
+export { default as PlatformList } from './PlatformList.vue'
+export { default as PlatformDetails } from './PlatformDetails.vue'

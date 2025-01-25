@@ -1,0 +1,405 @@
+openapi: 3.0.0
+info:
+  title: YouTube Contest API
+  description: API для работы с YouTube и поиска конкурсов
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Ошибка при выполнении запроса"
+
+    Video:
+      type: object
+      properties:
+        id:
+          type: integer
+        youtube_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        channel_id:
+          type: string
+        channel_title:
+          type: string
+        publish_date:
+          type: string
+          format: date-time
+        views_count:
+          type: integer
+        likes_count:
+          type: integer
+        comments_count:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        category_id:
+          type: string
+        duration:
+          type: string
+        thumbnail_url:
+          type: string
+        is_contest:
+          type: boolean
+        contest_probability:
+          type: number
+          format: float
+        status:
+          type: string
+          enum: [pending, processing, processed, error]
+
+    Channel:
+      type: object
+      properties:
+        id:
+          type: integer
+        channel_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        subscriber_count:
+          type: integer
+        video_count:
+          type: integer
+        view_count:
+          type: integer
+        thumbnail_url:
+          type: string
+        country:
+          type: string
+        contest_channel:
+          type: boolean
+        contest_videos_count:
+          type: integer
+        status:
+          type: string
+          enum: [active, inactive, blocked]
+
+    ApiStats:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        quota_used:
+          type: integer
+        quota_limit:
+          type: integer
+        search_requests:
+          type: integer
+        video_requests:
+          type: integer
+        channel_requests:
+          type: integer
+        status:
+          type: string
+          enum: [active, warning, exceeded]
+
+    ContestAnalytics:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        total_videos_found:
+          type: integer
+        contest_videos_found:
+          type: integer
+        average_contest_probability:
+          type: number
+          format: float
+        keywords_stats:
+          type: object
+          additionalProperties:
+            type: integer
+
+paths:
+  /youtube/search:
+    get:
+      summary: Поиск видео по ключевым словам
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+          description: Поисковый запрос
+        - in: query
+          name: maxResults
+          schema:
+            type: integer
+            default: 50
+          description: Максимальное количество результатов
+      responses:
+        '200':
+          description: Успешный поиск
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Video'
+        '400':
+          description: Неверный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /youtube/videos/{videoId}:
+    get:
+      summary: Получение информации о видео
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+          description: ID видео на YouTube
+      responses:
+        '200':
+          description: Успешное получение информации
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Video'
+        '404':
+          description: Видео не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /youtube/channels/{channelId}:
+    get:
+      summary: Получение информации о канале
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: channelId
+          required: true
+          schema:
+            type: string
+          description: ID канала на YouTube
+      responses:
+        '200':
+          description: Успешное получение информации
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Channel'
+        '404':
+          description: Канал не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /youtube/stats/api:
+    get:
+      summary: Получение статистики использования API
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            default: 7
+          description: Количество дней для статистики
+      responses:
+        '200':
+          description: Успешное получение статистики
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiStats'
+
+  /youtube/stats/contests:
+    get:
+      summary: Получение аналитики по конкурсам
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            default: 7
+          description: Количество дней для аналитики
+      responses:
+        '200':
+          description: Успешное получение аналитики
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContestAnalytics'
+
+  /youtube/search/start:
+    post:
+      summary: Запуск поиска новых видео
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Поиск успешно запущен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /youtube/contests/videos:
+    get:
+      summary: Получение списка конкурсных видео
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Номер страницы
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Количество элементов на странице
+        - in: query
+          name: channelId
+          schema:
+            type: string
+          description: ID канала для фильтрации
+      responses:
+        '200':
+          description: Успешное получение списка
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      videos:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Video'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      totalPages:
+                        type: integer
+
+  /youtube/contests/channels:
+    get:
+      summary: Получение списка конкурсных каналов
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Номер страницы
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Количество элементов на странице
+      responses:
+        '200':
+          description: Успешное получение списка
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      channels:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Channel'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      totalPages:
+                        type: integer 

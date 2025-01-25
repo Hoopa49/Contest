@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "A:\\Project_X\\Weby\\ContestMain\\backend\\logs\\audit-performance.json",
+    "files": [
+        {
+            "date": 1737794604764,
+            "name": "A:\\Project_X\\Weby\\ContestMain\\backend\\logs\\2025-01-25\\performance.log",
+            "hash": "eb3736917776e3fe005e3717f69732c740288efb7de49a3cdadb02e0dc2e5fc6"
+        }
+    ],
+    "hashType": "sha256"
+}
