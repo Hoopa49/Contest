@@ -91,6 +91,128 @@ const getDefaultStats = () => ({
   }
 })
 
+/**
+ * Получение статистики YouTube
+ * @returns {Promise<Object>} Объект со статистикой
+ */
+const getStats = async () => {
+  try {
+    console.log('Запрос статистики YouTube')
+    const response = await http.get(`${API_URL}/stats/contests`)
+    console.log('Ответ статистики:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Ошибка при получении статистики:', error)
+    throw error
+  }
+}
+
+/**
+ * Получение списка конкурсных видео
+ * @param {Object} params - Параметры запроса
+ * @returns {Promise} Список видео
+ */
+async function getContestVideos(params) {
+  try {
+    console.log('Отправка запроса на сервер:', `${API_URL}/contests/videos`, { params });
+    const response = await http.get(`${API_URL}/contests/videos`, { params });
+    console.log('Получен ответ от сервера:', response);
+    
+    if (!response || !response.data) {
+      console.warn('Получен пустой ответ от сервера в getContestVideos');
+      return { videos: [], total: 0 };
+    }
+    
+    // Проверяем успешность операции
+    if (response.data.success && response.data.data) {
+      const { videos, total, page, totalPages } = response.data.data;
+      console.log('Данные получены успешно:', { videos, total, page, totalPages });
+      return {
+        videos: videos || [],
+        total: total || 0,
+        page: parseInt(page) || 1,
+        totalPages: parseInt(totalPages) || 1
+      };
+    }
+    
+    // Если данные пришли в виде массива
+    if (Array.isArray(response.data)) {
+      console.log('Данные пришли в виде массива, форматируем');
+      return {
+        videos: response.data,
+        total: response.data.length,
+        page: 1,
+        totalPages: 1
+      };
+    }
+    
+    // Если структура данных неизвестна
+    console.warn('Неизвестная структура данных:', response.data);
+    return {
+      videos: [],
+      total: 0,
+      page: 1,
+      totalPages: 1
+    };
+  } catch (error) {
+    console.error('Ошибка в getContestVideos:', error);
+    throw error;
+  }
+}
+
+/**
+ * Получение списка конкурсных каналов
+ * @param {Object} params - Параметры запроса
+ * @returns {Promise} Список каналов
+ */
+async function getContestChannels(params) {
+  try {
+    console.log('Отправка запроса на сервер:', `${API_URL}/contests/channels`, { params });
+    const response = await http.get(`${API_URL}/contests/channels`, { params });
+    console.log('Получен ответ от сервера:', response);
+    
+    if (!response || !response.data) {
+      console.warn('Получен пустой ответ от сервера в getContestChannels');
+      return { channels: [], total: 0 };
+    }
+    
+    // Проверяем успешность операции
+    if (response.data.success && response.data.data) {
+      const { channels, total, page, totalPages } = response.data.data;
+      console.log('Данные получены успешно:', { channels, total, page, totalPages });
+      return {
+        channels: channels || [],
+        total: total || 0,
+        page: parseInt(page) || 1,
+        totalPages: parseInt(totalPages) || 1
+      };
+    }
+    
+    // Если данные пришли в виде массива
+    if (Array.isArray(response.data)) {
+      console.log('Данные пришли в виде массива, форматируем');
+      return {
+        channels: response.data,
+        total: response.data.length,
+        page: 1,
+        totalPages: 1
+      };
+    }
+    
+    // Если структура данных неизвестна
+    console.warn('Неизвестная структура данных:', response.data);
+    return {
+      channels: [],
+      total: 0,
+      page: 1,
+      totalPages: 1
+    };
+  } catch (error) {
+    console.error('Ошибка в getContestChannels:', error);
+    throw error;
+  }
+}
+
 export const youtubeService = {
   /**
    * Получение статуса интеграции
@@ -202,56 +324,49 @@ export const youtubeService = {
    */
   async getContestVideos(params) {
     try {
-      console.log('Отправка запроса на сервер:', `${API_URL}/contests/videos`, { params })
-      const response = await http.get(`${API_URL}/contests/videos`, { params })
-      console.log('Получен ответ от сервера:', response)
+      console.log('Отправка запроса на сервер:', `${API_URL}/contests/videos`, { params });
+      const response = await http.get(`${API_URL}/contests/videos`, { params });
+      console.log('Получен ответ от сервера:', response);
       
-      // Проверяем и форматируем ответ
       if (!response || !response.data) {
-        console.warn('Получен пустой ответ от сервера в getContestVideos')
-        return { data: { videos: [], total: 0 } }
+        console.warn('Получен пустой ответ от сервера в getContestVideos');
+        return { videos: [], total: 0 };
       }
       
       // Проверяем успешность операции
       if (response.data.success && response.data.data) {
-        const { videos, total, page, totalPages } = response.data.data
-        console.log('Данные получены успешно:', { videos, total, page, totalPages })
+        const { videos, total, page, totalPages } = response.data.data;
+        console.log('Данные получены успешно:', { videos, total, page, totalPages });
         return {
-          data: {
-            videos: videos || [],
-            total: total || 0,
-            page: page || 1,
-            totalPages: totalPages || 1
-          }
-        }
+          videos: videos || [],
+          total: total || 0,
+          page: parseInt(page) || 1,
+          totalPages: parseInt(totalPages) || 1
+        };
       }
       
       // Если данные пришли в виде массива
       if (Array.isArray(response.data)) {
-        console.log('Данные пришли в виде массива, форматируем')
+        console.log('Данные пришли в виде массива, форматируем');
         return {
-          data: {
-            videos: response.data,
-            total: response.data.length,
-            page: 1,
-            totalPages: 1
-          }
-        }
+          videos: response.data,
+          total: response.data.length,
+          page: 1,
+          totalPages: 1
+        };
       }
       
       // Если структура данных неизвестна
-      console.warn('Неизвестная структура данных:', response.data)
+      console.warn('Неизвестная структура данных:', response.data);
       return {
-        data: {
-          videos: [],
-          total: 0,
-          page: 1,
-          totalPages: 1
-        }
-      }
+        videos: [],
+        total: 0,
+        page: 1,
+        totalPages: 1
+      };
     } catch (error) {
-      console.error('Ошибка в getContestVideos:', error)
-      throw error
+      console.error('Ошибка в getContestVideos:', error);
+      throw error;
     }
   },
 
@@ -262,74 +377,49 @@ export const youtubeService = {
    */
   async getContestChannels(params) {
     try {
-      console.log('Отправка запроса на сервер:', `${API_URL}/contests/channels`, { params })
-      const response = await http.get(`${API_URL}/contests/channels`, { params })
-      console.log('Получен ответ от сервера:', response)
+      console.log('Отправка запроса на сервер:', `${API_URL}/contests/channels`, { params });
+      const response = await http.get(`${API_URL}/contests/channels`, { params });
+      console.log('Получен ответ от сервера:', response);
       
-      // Проверяем и форматируем ответ
       if (!response || !response.data) {
-        console.warn('Получен пустой ответ от сервера в getContestChannels')
-        return { data: { channels: [], total: 0 } }
+        console.warn('Получен пустой ответ от сервера в getContestChannels');
+        return { channels: [], total: 0 };
       }
       
       // Проверяем успешность операции
       if (response.data.success && response.data.data) {
-        const { channels, total, page, totalPages } = response.data.data
-        console.log('Данные получены успешно:', { channels, total, page, totalPages })
-        
-        // Форматируем каналы
-        const formattedChannels = (channels || []).map(channel => ({
-          ...channel,
-          contest_videos_count: channel.contest_videos_count || 0,
-          total_videos: channel.total_videos || 0,
-          subscriber_count: channel.subscriber_count || 0,
-          thumbnail_url: channel.thumbnail_url || ''
-        }))
-        
+        const { channels, total, page, totalPages } = response.data.data;
+        console.log('Данные получены успешно:', { channels, total, page, totalPages });
         return {
-          data: {
-            channels: formattedChannels,
-            total: total || 0,
-            page: page || 1,
-            totalPages: totalPages || 1
-          }
-        }
+          channels: channels || [],
+          total: total || 0,
+          page: parseInt(page) || 1,
+          totalPages: parseInt(totalPages) || 1
+        };
       }
       
       // Если данные пришли в виде массива
       if (Array.isArray(response.data)) {
-        console.log('Данные пришли в виде массива, форматируем')
-        const formattedChannels = response.data.map(channel => ({
-          ...channel,
-          contest_videos_count: channel.contest_videos_count || 0,
-          total_videos: channel.total_videos || 0,
-          subscriber_count: channel.subscriber_count || 0,
-          thumbnail_url: channel.thumbnail_url || ''
-        }))
-        
+        console.log('Данные пришли в виде массива, форматируем');
         return {
-          data: {
-            channels: formattedChannels,
-            total: formattedChannels.length,
-            page: 1,
-            totalPages: 1
-          }
-        }
+          channels: response.data,
+          total: response.data.length,
+          page: 1,
+          totalPages: 1
+        };
       }
       
       // Если структура данных неизвестна
-      console.warn('Неизвестная структура данных:', response.data)
+      console.warn('Неизвестная структура данных:', response.data);
       return {
-        data: {
-          channels: [],
-          total: 0,
-          page: 1,
-          totalPages: 1
-        }
-      }
+        channels: [],
+        total: 0,
+        page: 1,
+        totalPages: 1
+      };
     } catch (error) {
-      console.error('Ошибка в getContestChannels:', error)
-      throw error
+      console.error('Ошибка в getContestChannels:', error);
+      throw error;
     }
   },
 
@@ -511,4 +601,9 @@ export const youtubeService = {
       throw error;
     }
   },
+
+  getStats,
+
+  getContestVideos,
+  getContestChannels
 } 

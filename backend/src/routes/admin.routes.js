@@ -6,6 +6,7 @@ const express = require('express')
 const router = express.Router()
 const { authMiddleware, adminMiddleware } = require('../middleware/auth.middleware')
 const AdminController = require('../controllers/admin.controller')
+const analyticsController = require('../controllers/analytics.controller')
 
 const adminController = new AdminController()
 
@@ -18,6 +19,11 @@ router.get('/stats', adminController.getSystemStats.bind(adminController))
 
 // Получение последних действий
 router.get('/activity', adminController.getRecentActions.bind(adminController))
+
+// Маршруты для аналитики
+router.get('/analytics', analyticsController.getLatestAnalytics.bind(analyticsController))
+router.get('/analytics/:category', analyticsController.getAnalyticsByCategory.bind(analyticsController))
+router.get('/analytics/:category/metrics', analyticsController.aggregateMetrics.bind(analyticsController))
 
 // Получение списка пользователей
 router.get('/users', adminController.getUsers.bind(adminController))

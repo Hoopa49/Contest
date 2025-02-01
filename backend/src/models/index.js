@@ -11,6 +11,7 @@ const User = require('./user.model')
 const Contest = require('./contest.model')
 const DraftContest = require('./draft_contest.model')
 const Settings = require('./settings.model')
+const SystemSettings = require('./system_settings.model')
 const Log = require('./log.model')
 const ContestParticipation = require('./contest_participation.model')
 const FavoriteContest = require('./favorite_contest.model')
@@ -29,48 +30,81 @@ const YoutubeSettings = require('./youtube_settings.model')
 const IntegrationStats = require('./integration_stats.model')
 const IntegrationEvent = require('./integration_events.model')
 const IntegrationActivity = require('./integration_activities.model')
+const AnalyticsData = require('./analytics_data.model')
 
-// Инициализация моделей
-const models = {
-  User,
-  Contest,
-  DraftContest,
-  Settings,
-  Log,
-  ContestParticipation,
-  FavoriteContest,
-  Notification,
-  NotificationSettings,
-  ContestComment,
-  ContestReview,
-  ReviewLike,
-  ContestStats,
-  ContestShareStats,
-  youtube_video: YoutubeVideo,
-  youtube_channel: YoutubeChannel,
-  youtube_api_quota: YoutubeApiQuota,
-  youtube_analytics: YoutubeAnalytics,
-  youtube_settings: YoutubeSettings,
-  integration_stats: IntegrationStats,
-  integration_events: IntegrationEvent,
-  integration_activities: IntegrationActivity
+let initialized = false
+
+// Инициализируем модели и устанавливаем ассоциации
+const initializeModels = async () => {
+  if (initialized) {
+    return {
+      User, Contest, DraftContest, Settings, SystemSettings, Log,
+      ContestParticipation, FavoriteContest, Notification, NotificationSettings,
+      ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
+      YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
+      YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
+      AnalyticsData
+    }
+  }
+
+  try {
+    // Инициализируем каждую модель
+    [
+      User, Contest, DraftContest, Settings, SystemSettings, Log,
+      ContestParticipation, FavoriteContest, Notification, NotificationSettings,
+      ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
+      YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
+      YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
+      AnalyticsData
+    ].forEach(model => {
+      if (model && typeof model.init === 'function') {
+        model.init(sequelize)
+        logger.debug(`Model ${model.name} initialized`)
+      }
+    })
+
+    // Устанавливаем ассоциации после того, как все модели инициализированы
+    const models = {
+      User, Contest, DraftContest, Settings, SystemSettings, Log,
+      ContestParticipation, FavoriteContest, Notification, NotificationSettings,
+      ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
+      YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
+      YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
+      AnalyticsData
+    }
+
+    Object.values(models).forEach(model => {
+      if (model && typeof model.associate === 'function') {
+        model.associate(models)
+        logger.debug(`Associations set for model ${model.name}`)
+      }
+    })
+
+    initialized = true
+    logger.info('Models initialized successfully', {
+      modelCount: Object.keys(models).length,
+      modelNames: Object.keys(models).join(', ')
+    })
+
+    return models
+  } catch (error) {
+    logger.error('Error initializing models:', {
+      error: error.message,
+      stack: error.stack
+    })
+    throw error
+  }
 }
 
-// Инициализируем каждую модель
-Object.values(models).forEach(model => {
-  if (model && typeof model.init === 'function') {
-    model.init(sequelize)
-  }
-})
-
-// Устанавливаем ассоциации после того, как все модели инициализированы
-Object.values(models).forEach(model => {
-  if (model && typeof model.associate === 'function') {
-    model.associate(models)
-  }
-})
-
+// Экспортируем модели и функцию инициализации
 module.exports = {
-  ...models,
-  sequelize
+  User, Contest, DraftContest, Settings, SystemSettings, Log,
+  ContestParticipation, FavoriteContest, Notification, NotificationSettings,
+  ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
+  YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
+  YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
+  AnalyticsData,
+  sequelize,
+  initializeModels,
+  isInitialized: () => initialized
 } 

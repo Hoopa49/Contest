@@ -3,12 +3,12 @@
         "days": true,
         "amount": 14
     },
-    "auditLog": "A:\\Project_X\\Weby\\ContestMain\\backend\\logs\\audit-error.json",
+    "auditLog": "A:/Project_X/Weby/ContestMain/backend/logs/audit-error.json",
     "files": [
         {
-            "date": 1737794604758,
-            "name": "A:\\Project_X\\Weby\\ContestMain\\backend\\logs\\2025-01-25\\error.log",
-            "hash": "4c4781c2d38575475a3720ea8e3088d3bbb2c77a4e7e183c6f3d9ceb37cbfd04"
+            "date": 1738432557742,
+            "name": "A:\\Project_X\\Weby\\ContestMain\\backend\\logs\\2025-02-01\\error.log",
+            "hash": "659cb7fc58162d3f186b887c750b4a16f349c6781c3a88d3d5b62b1c8d1af89c"
         }
     ],
     "hashType": "sha256"

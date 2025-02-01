@@ -5,28 +5,32 @@
 const seedTestUser = require('./user.seeder')
 const seedTestContests = require('./contest.seeder')
 const seedIntegrations = require('./integration.seeder')
-const { log } = require('../../utils/logger')
-const { LOG_MESSAGES } = require('../../constants/logs')
+const seedIntegrationActivities = require('./integration_activities.seeder')
+const { logger } = require('../../logging')
 
 async function runSeeders() {
   try {
-    log.info(LOG_MESSAGES.DATABASE.SEEDING_START)
+    logger.info('Начало заполнения базы данных тестовыми данными')
 
     // Сначала создаем тестового пользователя
-    log.info('Запуск сида пользователей')
+    logger.info('Запуск сида пользователей')
     await seedTestUser()
     
     // Затем создаем тестовые конкурсы
-    log.info('Запуск сида конкурсов')
+    logger.info('Запуск сида конкурсов')
     await seedTestContests()
     
     // Создаем тестовые данные интеграций
-    log.info('Запуск сида интеграций')
+    logger.info('Запуск сида интеграций')
     await seedIntegrations()
     
-    log.info(LOG_MESSAGES.DATABASE.SEEDING_END)
+    // Создаем тестовые данные активности интеграций
+    logger.info('Запуск сида активности интеграций')
+    await seedIntegrationActivities()
+    
+    logger.info('Заполнение базы данных завершено')
   } catch (error) {
-    log.error('Ошибка при выполнении сидов', {
+    logger.error('Ошибка при выполнении сидов', {
       error: error.message,
       stack: error.stack
     })

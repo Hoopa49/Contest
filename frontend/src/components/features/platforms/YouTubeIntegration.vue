@@ -369,18 +369,18 @@ export default {
 
     const loadStats = async () => {
       try {
-        const response = await youtubeStore.getContestStats()
+        const response = await youtubeStore.getStats()
         console.log('Полученные данные:', response)
         
         // Проверяем наличие данных
-        if (response) {
-          // Обновляем состояние статистики в соответствии с форматом ответа
-          stats.total_contests = response.total_contests || 0
-          stats.active_contests = response.active_contests || 0
-          stats.channels_count = response.channels_count || 0
-          stats.avg_prize_value = response.avg_prize_value || 0
-          stats.contest_types = response.contest_types || []
-          stats.daily_stats = response.daily_stats || []
+        if (response?.success && response.data) {
+          // Обновляем состояние статистики
+          stats.total_contests = response.data.total_contests || 0
+          stats.active_contests = response.data.active_contests || 0
+          stats.channels_count = response.data.channels_count || 0
+          stats.avg_prize_value = response.data.avg_prize_value || 0
+          stats.contest_types = response.data.contest_types || []
+          stats.daily_stats = response.data.daily_stats || []
           
           console.log('Обновленная статистика:', stats)
         } else {

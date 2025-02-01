@@ -9,7 +9,6 @@ class YoutubeAnalyticsService {
    */
   async aggregateStats(date = new Date()) {
     try {
-      
       // Нормализуем дату до начала дня
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
@@ -37,7 +36,7 @@ class YoutubeAnalyticsService {
         where: {
           is_contest: true,
           channel_id: { [Op.ne]: null },
-          created_at: {
+          publish_date: {
             [Op.between]: [startOfDay, endOfDay]
           }
         },
@@ -127,39 +126,6 @@ class YoutubeAnalyticsService {
         order: [['date', 'ASC']]
       });
 
-      // Форматируем данные для фронтенда
-      const activityData = {
-        daily_stats: []
-      };
-
-      // Заполняем данные за каждый день
-      for (let i = 0; i < days; i++) {
-        const date = new Date(startDate.getTime() + (i * 86400000));
-        const dateStr = date.toISOString().split('T')[0];
-        
-        const dayStat = stats.find(s => {
-          const statDate = new Date(s.date);
-          return statDate.toISOString().split('T')[0] === dateStr;
-        });
-
-        if (dayStat) {
-          activityData.daily_stats.push({
-            date: dateStr,
-            contests: dayStat.contests_count || 0,
-            views: dayStat.views_count || 0,
-            participants: dayStat.participants_count || 0
-          });
-        } else {
-          // Если нет данных за день, добавляем нули
-          activityData.daily_stats.push({
-            date: dateStr,
-            contests: 0,
-            views: 0,
-            participants: 0
-          });
-        }
-      }
-
       // Получаем общую статистику
       const totals = await YoutubeVideo.findOne({
         where: { 
@@ -173,6 +139,7 @@ class YoutubeAnalyticsService {
         ]
       });
 
+      // Получаем количество каналов с конкурсами
       const channelsCount = await YoutubeChannel.count({
         where: { 
           contest_channel: true,
@@ -180,53 +147,21 @@ class YoutubeAnalyticsService {
         }
       });
 
-      const lastAnalytics = stats[stats.length - 1];
-
+      // Форматируем данные для фронтенда
       return {
-        success: true,
-        data: {
-          totalRequests: totals.get('total_contests') || 0,
-          successfulRequests: totals.get('active_contests') || 0,
-          failedRequests: lastAnalytics?.errors_count || 0,
-          platforms: {
-            youtube: {
-              enabled: true,
-              lastSync: new Date().toISOString(),
-              contestsFound: totals.get('total_contests') || 0,
-              errorCount: lastAnalytics?.errors_count || 0,
-              requests: totals.get('total_contests') || 0,
-              successfulRequests: totals.get('active_contests') || 0,
-              failedRequests: lastAnalytics?.errors_count || 0
-            },
-            instagram: {
-              enabled: true,
-              lastSync: new Date().toISOString(),
-              contestsFound: 0,
-              errorCount: 0,
-              requests: 0,
-              successfulRequests: 0,
-              failedRequests: 0
-            },
-            vk: {
-              enabled: true,
-              lastSync: new Date().toISOString(),
-              contestsFound: 0,
-              errorCount: 0,
-              requests: 0,
-              successfulRequests: 0,
-              failedRequests: 0
-            },
-            telegram: {
-              enabled: false,
-              lastSync: null,
-              contestsFound: 0,
-              errorCount: 0,
-              requests: 0,
-              successfulRequests: 0,
-              failedRequests: 0
-            }
-          }
-        }
+        total_contests: parseInt(totals.get('total_contests')) || 0,
+        active_contests: parseInt(totals.get('active_contests')) || 0,
+        channels_count: channelsCount,
+        avg_prize_value: Math.round(parseFloat(totals.get('avg_prize_value'))) || 0,
+        contest_types: stats[stats.length - 1]?.contest_types || [],
+        daily_stats: stats.map(day => ({
+          date: day.date,
+          contests: day.contests_count || 0,
+          views: day.views_count || 0,
+          participants: day.participants_count || 0,
+          likes: day.likes_count || 0,
+          comments: day.comments_count || 0
+        }))
       };
     } catch (error) {
       logger.error('Ошибка при получении статистики YouTube:', error);

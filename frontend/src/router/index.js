@@ -79,7 +79,7 @@ const routes = [
   {
     path: '/admin',
     name: 'admin',
-    component: () => import('../views/admin/Dashboard.vue'),
+    component: () => import('../views/admin/AdminLayout.vue'),
     meta: { 
       title: 'Панель администратора',
       requiresAuth: true,
@@ -89,37 +89,48 @@ const routes = [
     children: [
       {
         path: '',
-        redirect: { name: 'admin-dashboard' }
+        name: 'admin-dashboard',
+        component: () => import('../views/admin/Dashboard.vue'),
+        meta: { 
+          tab: 'dashboard',
+          title: 'Панель администратора'
+        }
       },
       {
-        path: 'dashboard',
-        name: 'admin-dashboard',
-        component: () => import('../views/admin/Analytics.vue'),
-        meta: { tab: 'dashboard' }
+        path: 'system-settings',
+        name: 'admin-system-settings',
+        component: () => import('../views/admin/SystemSettings.vue'),
+        meta: { 
+          tab: 'system-settings',
+          title: 'Системные настройки'
+        }
       },
       {
         path: 'users',
         name: 'admin-users',
         component: () => import('../views/admin/UserManagement.vue'),
-        meta: { tab: 'users' }
+        meta: { 
+          tab: 'users',
+          title: 'Пользователи'
+        }
       },
       {
         path: 'integrations',
         name: 'admin-integrations',
-        component: () => import('../views/admin/YouTubeManager.vue'),
-        meta: { tab: 'integrations' }
-      },
-      {
-        path: 'settings',
-        name: 'admin-settings',
-        component: () => import('../views/admin/ApiSettings.vue'),
-        meta: { tab: 'settings' }
+        component: () => import('../components/features/platforms/PlatformIntegrations.vue'),
+        meta: { 
+          tab: 'integrations',
+          title: 'Интеграции'
+        }
       },
       {
         path: 'logs',
         name: 'admin-logs',
         component: () => import('../views/admin/NotificationSettings.vue'),
-        meta: { tab: 'logs' }
+        meta: { 
+          tab: 'logs',
+          title: 'Логи'
+        }
       }
     ]
   },
