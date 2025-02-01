@@ -72,12 +72,22 @@ export const useAdminStore = defineStore('admin', () => {
     return withAsync(state.value, async () => {
       try {
         const response = await adminService.getIntegrationActivity(timeRange)
-        state.value.integrationActivity = response.data || null
-        return state.value.integrationActivity
+        if (!response?.data) {
+          console.warn('Нет данных от сервера при получении активности интеграций')
+          return {
+            success: true,
+            data: {
+              byPlatform: {},
+              userActions: {}
+            }
+          }
+        }
+        state.value.integrationActivity = response.data
+        return response
       } catch (error) {
         console.error('Error fetching integration activity:', error)
         state.value.integrationActivity = null
-        return null
+        throw error
       }
     })
   }

@@ -6,16 +6,21 @@
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const BaseService = require('./base.service')
-const { User, Contest } = require('../models')
-const { ValidationError, ConflictError } = require('../utils/errors')
 const { Op, Sequelize } = require('sequelize')
 const { logger } = require('../logging')
 const config = require('../config')
+const { ValidationError, ConflictError } = require('../utils/errors')
 
 class UserService extends BaseService {
   constructor() {
-    super(User)
-    
+    super('User')
+    this.Contest = null
+  }
+
+  init(models) {
+    super.init(models)
+    this.Contest = models.Contest
+    logger.info('UserService initialized with models')
   }
 
   /**
@@ -24,6 +29,7 @@ class UserService extends BaseService {
    * @returns {Promise<Object>} Пользователь
    */
   async getById(id) {
+    this.checkModel()
     return this.findById(id)
   }
 
@@ -237,7 +243,7 @@ class UserService extends BaseService {
 
       try {
         // Получение статистики через Sequelize
-        const stats = await Contest.findAll({
+        const stats = await this.Contest.findAll({
           attributes: [
             'contest_status',
             [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
@@ -296,7 +302,7 @@ class UserService extends BaseService {
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-      const activity = await Contest.findAll({
+      const activity = await this.Contest.findAll({
         where: {
           user_id: userId,
           updated_at: {

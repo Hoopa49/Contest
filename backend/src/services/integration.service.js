@@ -1,43 +1,62 @@
 const { Op } = require('sequelize')
 const { logger } = require('../logging')
-const models = require('../models')
+const BaseService = require('./base.service')
 
-class IntegrationService {
+class IntegrationService extends BaseService {
   constructor() {
+    super('IntegrationActivity')
     this.platforms = ['youtube', 'instagram', 'vk', 'telegram']
-    
-    // Проверяем наличие всех необходимых моделей
-    const requiredModels = {
-      stats: 'integration_stats',
-      events: 'integration_events',
-      activities: 'integration_activities',
-      users: 'User'
-    }
+    this.initialized = false
+  }
 
-    this.models = {}
-    
-    for (const [key, modelName] of Object.entries(requiredModels)) {
-      if (!models[modelName]) {
-        logger.error('Модель не найдена:', { modelName })
-        throw new Error(`Модель ${modelName} не найдена`)
+  init(models) {
+    try {
+      // Проверяем наличие всех необходимых моделей
+      const requiredModels = {
+        stats: 'IntegrationStats',
+        events: 'IntegrationEvent',
+        activities: 'IntegrationActivity',
+        users: 'User'
       }
-      this.models[key] = models[modelName]
+
+      this.serviceModels = {}
+      
+      for (const [key, modelName] of Object.entries(requiredModels)) {
+        if (!models[modelName]) {
+          logger.error('Модель не найдена:', { modelName })
+          throw new Error(`Модель ${modelName} не найдена`)
+        }
+        this.serviceModels[key] = models[modelName]
+      }
+
+      super.init(models)
+      logger.info('Сервис интеграций инициализирован:', {
+        platforms: this.platforms,
+        models: Object.keys(models)
+      })
+
+      this.initialized = true
+      this.initializeStats()
+    } catch (error) {
+      logger.error('Ошибка инициализации сервиса:', {
+        error: error.message,
+        stack: error.stack
+      })
+      throw error
     }
-
-    logger.info('Сервис интеграций инициализирован:', {
-      platforms: this.platforms,
-      models: Object.keys(this.models)
-    })
-
-    this.initializeStats()
   }
 
   async initializeStats() {
+    if (!this.initialized) {
+      logger.warn('Попытка инициализации статистики без инициализации сервиса')
+      return
+    }
+
     try {
       const results = []
       
       for (const platform of this.platforms) {
-        const [stats, created] = await this.models.stats.findOrCreate({
+        const [stats, created] = await this.serviceModels.stats.findOrCreate({
           where: { platform },
           defaults: {
             enabled: false,
@@ -71,7 +90,7 @@ class IntegrationService {
 
     try {
       // Получаем статистику по всем платформам
-      const stats = await this.models.stats.findAll()
+      const stats = await this.serviceModels.stats.findAll()
       
       // Собираем статистику
       const result = {
@@ -139,11 +158,11 @@ class IntegrationService {
     logger.info('Начало получения событий интеграций')
 
     try {
-      if (!this.models.events) {
+      if (!this.serviceModels.events) {
         throw new Error('Модель IntegrationEvent не инициализирована')
       }
 
-      const events = await this.models.events.findAll({
+      const events = await this.serviceModels.events.findAll({
         where: {
           created_at: {
             [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -190,8 +209,29 @@ class IntegrationService {
     logger.info('Начало получения активности интеграций:', { timeRange })
 
     try {
-      if (!this.models.activities) {
-        throw new Error('Модель IntegrationActivity не инициализирована')
+      // Проверяем инициализацию моделей
+      if (!this.serviceModels) {
+        logger.error('Модели не инициализированы')
+        return {
+          byPlatform: {},
+          userActions: {}
+        }
+      }
+
+      // Проверяем наличие конкретных моделей
+      const IntegrationActivity = this.serviceModels.activities
+      const User = this.serviceModels.users
+
+      if (!IntegrationActivity || !User) {
+        logger.error('Модели не найдены:', {
+          hasActivity: !!IntegrationActivity,
+          hasUser: !!User,
+          availableModels: Object.keys(this.serviceModels)
+        })
+        return {
+          byPlatform: {},
+          userActions: {}
+        }
       }
 
       // Определяем временной диапазон
@@ -204,62 +244,96 @@ class IntegrationService {
       const startDate = new Date(Date.now() - (ranges[timeRange] || ranges.week))
 
       // Получаем активность
-      const activities = await this.models.activities.findAll({
+      const activities = await IntegrationActivity.findAll({
         where: {
           created_at: {
             [Op.gte]: startDate
           }
         },
         include: [{
-          model: this.models.users,
+          model: User,
           as: 'user',
           attributes: ['id', 'username', 'email']
         }],
         order: [['created_at', 'DESC']]
       })
 
+      logger.info('Получены записи активности:', { count: activities.length })
+
+      if (!activities || activities.length === 0) {
+        logger.info('Активность не найдена')
+        return {
+          byPlatform: {},
+          userActions: {}
+        }
+      }
+
       // Группируем по платформам
       const byPlatform = {}
       const userActions = {}
 
-      for (const activity of activities) {
-        // Считаем действия по платформам
-        if (!byPlatform[activity.platform]) {
-          byPlatform[activity.platform] = 0
-        }
-        byPlatform[activity.platform]++
+      // Обрабатываем каждую активность
+      activities.forEach(activity => {
+        const { platform, action_type, created_at, user } = activity.get({ plain: true })
+        const timestamp = new Date(created_at).toISOString()
 
-        // Считаем действия пользователей
-        if (!userActions[activity.user_id]) {
-          userActions[activity.user_id] = {
-            userId: activity.user_id,
-            username: activity.user?.username,
-            actions: 0
+        // Группируем по платформам
+        if (!byPlatform[platform]) {
+          byPlatform[platform] = {
+            actions: []
           }
         }
-        userActions[activity.user_id].actions++
-      }
 
-      // Формируем топ пользователей
-      const topUsers = Object.values(userActions)
-        .sort((a, b) => b.actions - a.actions)
-        .slice(0, 5)
+        // Находим или создаем запись для текущей даты
+        const existingAction = byPlatform[platform].actions.find(
+          a => new Date(a.timestamp).toDateString() === new Date(timestamp).toDateString()
+        )
 
-      const result = {
-        timeRange,
-        totalActions: activities.length,
-        byPlatform,
-        topUsers
-      }
+        if (existingAction) {
+          existingAction.count++
+        } else {
+          byPlatform[platform].actions.push({
+            timestamp,
+            count: 1
+          })
+        }
 
-      logger.info('Активность интеграций получена:', {
-        timeRange,
-        totalActions: activities.length,
-        platforms: Object.keys(byPlatform).length,
-        topUsersCount: topUsers.length
+        // Группируем действия пользователей
+        if (user) {
+          const userId = user.id
+          if (!userActions[userId]) {
+            userActions[userId] = {
+              user: {
+                id: user.id,
+                username: user.username,
+                email: user.email
+              },
+              actions: []
+            }
+          }
+
+          userActions[userId].actions.push({
+            platform,
+            action_type,
+            timestamp
+          })
+        }
       })
 
-      return result
+      // Сортируем действия по времени для каждой платформы
+      Object.values(byPlatform).forEach(platform => {
+        platform.actions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      })
+
+      logger.info('Данные активности сформированы:', { 
+        platforms: Object.keys(byPlatform),
+        userCount: Object.keys(userActions).length
+      })
+
+      return {
+        byPlatform,
+        userActions
+      }
     } catch (error) {
       logger.error('Ошибка получения активности:', { 
         error: error.message,
@@ -272,7 +346,7 @@ class IntegrationService {
 
   async toggleIntegration(platform) {
     try {
-      const integration = await this.models.stats.findOne({
+      const integration = await this.serviceModels.stats.findOne({
         where: { platform }
       })
 
@@ -307,7 +381,7 @@ class IntegrationService {
 
   async runSearch(platform) {
     try {
-      const integration = await this.models.stats.findOne({
+      const integration = await this.serviceModels.stats.findOne({
         where: { platform }
       })
 

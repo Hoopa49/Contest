@@ -1,53 +1,164 @@
-const swaggerUi = require('swagger-ui-express');
-const YAML = require('yamljs');
-const path = require('path');
+/**
+ * Конфигурация Swagger/OpenAPI
+ */
 
-// Загружаем документацию API для каждого модуля
-const youtubeApiDoc = YAML.load(path.join(__dirname, '../modules/youtube/docs/api.yaml'));
+const swaggerJsdoc = require('swagger-jsdoc')
+const swaggerUi = require('swagger-ui-express')
+const path = require('path')
 
-// Объединяем все спецификации
-const apiSpec = {
+// Базовая информация об API
+const apiInfo = {
   openapi: '3.0.0',
   info: {
-    title: 'Contest Platform API',
-    description: 'API документация для платформы конкурсов',
-    version: '1.0.0'
+    title: 'Contest Aggregator API',
+    version: '1.0.0',
+    description: 'API для агрегатора конкурсов',
+    contact: {
+      name: 'API Support',
+      email: 'support@example.com'
+    }
   },
   servers: [
     {
-      url: '/api/v1',
-      description: 'API версии 1'
+      url: process.env.API_URL || 'http://localhost:3000',
+      description: 'API сервер'
     }
-  ],
-  security: [
-    {
-      bearerAuth: []
-    }
-  ],
-  components: {
-    securitySchemes: {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT'
+  ]
+}
+
+// Компоненты безопасности
+const securitySchemes = {
+  bearerAuth: {
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT'
+  }
+}
+
+// Общие компоненты
+const components = {
+  securitySchemes,
+  responses: {
+    UnauthorizedError: {
+      description: 'Ошибка авторизации',
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              success: {
+                type: 'boolean',
+                example: false
+              },
+              message: {
+                type: 'string',
+                example: 'Unauthorized'
+              }
+            }
+          }
+        }
+      }
+    },
+    ForbiddenError: {
+      description: 'Доступ запрещен',
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              success: {
+                type: 'boolean',
+                example: false
+              },
+              message: {
+                type: 'string',
+                example: 'Forbidden'
+              }
+            }
+          }
+        }
+      }
+    },
+    NotFoundError: {
+      description: 'Ресурс не найден',
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              success: {
+                type: 'boolean',
+                example: false
+              },
+              message: {
+                type: 'string',
+                example: 'Not Found'
+              }
+            }
+          }
+        }
+      }
+    },
+    ServerError: {
+      description: 'Внутренняя ошибка сервера',
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              success: {
+                type: 'boolean',
+                example: false
+              },
+              message: {
+                type: 'string',
+                example: 'Internal Server Error'
+              }
+            }
+          }
+        }
       }
     }
-  },
-  paths: {
-    ...youtubeApiDoc.paths
-  },
-  components: {
-    ...youtubeApiDoc.components
   }
-};
+}
 
-const swaggerOptions = {
+// Опции для swagger-jsdoc
+const options = {
+  definition: {
+    ...apiInfo,
+    components
+  },
+  // Пути к файлам с JSDoc комментариями
+  apis: [
+    path.join(__dirname, '../routes/*.js'),
+    path.join(__dirname, '../modules/*/routes/*.js'),
+    path.join(__dirname, '../modules/*/docs/*.yaml')
+  ]
+}
+
+// Генерация спецификации
+const apiSpec = swaggerJsdoc(options)
+
+// Опции для swagger-ui
+const uiOptions = {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "Contest Platform API Documentation"
-};
+  swaggerOptions: {
+    persistAuthorization: true
+  }
+}
 
 module.exports = {
-  serve: swaggerUi.serve,
-  setup: swaggerUi.setup(apiSpec, swaggerOptions)
-}; 
+  apiSpec,
+  uiOptions,
+  setup: (app) => {
+    // Маршрут для JSON спецификации
+    app.get('/api-docs.json', (req, res) => {
+      res.setHeader('Content-Type', 'application/json')
+      res.send(apiSpec)
+    })
+
+    // Маршрут для Swagger UI
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(apiSpec, uiOptions))
+  }
+} 

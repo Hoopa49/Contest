@@ -12,6 +12,8 @@ const logRoutes = require('./log.routes')
 const adminRoutes = require('./admin.routes')
 const notificationRoutes = require('./notification.routes')
 const integrationRoutes = require('./integration.routes')
+const systemSettingsRoutes = require('./system_settings.routes')
+const analyticsRoutes = require('./analytics.routes')
 
 // Маршруты аутентификации
 router.use('/auth', authRoutes)
@@ -33,6 +35,12 @@ router.use('/notifications', notificationRoutes)
 
 // Маршруты интеграций
 router.use('/admin/integrations', integrationRoutes)
+
+// Маршруты системных настроек
+router.use('/admin/system-settings', systemSettingsRoutes)
+
+// Маршруты аналитики
+router.use('/admin/analytics', analyticsRoutes)
 
 // Обработка несуществующих маршрутов
 router.use('*', (req, res) => {

@@ -39,15 +39,28 @@ const {
   errorLoggerMiddleware 
 } = require('./logging/middleware');
 const { authContextMiddleware } = require('./logging/auth-context');
-
-// Импортируем новую систему логирования
 const { logger } = require('./logging')
+const morgan = require('morgan')
+const { initializeModels } = require('./models')
+const services = require('./services')
 
 // Получаем JWT_SECRET из переменных окружения или используем значение по умолчанию
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Инициализируем приложение
 const app = express()
+
+// Инициализируем модели и сервисы
+const initApp = async () => {
+  try {
+    const models = await initializeModels()
+    await services.init(models)
+    logger.info('Application initialized successfully')
+  } catch (error) {
+    logger.error('Error initializing application:', error)
+    process.exit(1)
+  }
+}
 
 // Добавляем базовые middleware
 app.use(express.json());
@@ -93,8 +106,11 @@ app.use(requestLoggerMiddleware);   // И только потом логиров
 // Serve static files from public directory
 app.use('/images', express.static(path.join(__dirname, '../public/images')))
 
-// API Documentation
-app.use('/api-docs', swagger.serve, swagger.setup)
+// Логирование HTTP запросов
+app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }))
+
+// Настройка Swagger
+swagger.setup(app);
 
 // Security headers
 app.use((req, res, next) => {
@@ -122,19 +138,23 @@ setupCronJobs()
 
 // Start server
 const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-  logger.info('Сервер запущен', { 
-    metadata: {
-      port: PORT,
-      environment: process.env.NODE_ENV || 'development',
-      node_version: process.version
-    }
-  })
-  
-  logger.info('API документация доступна', {
-    metadata: {
-      url: `http://localhost:${PORT}/api-docs`
-    }
+
+// Инициализируем приложение и запускаем сервер
+initApp().then(() => {
+  app.listen(PORT, () => {
+    logger.info('Сервер запущен', { 
+      metadata: {
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        node_version: process.version
+      }
+    })
+    
+    logger.info('API документация доступна', {
+      metadata: {
+        url: `http://localhost:${PORT}/api-docs`
+      }
+    })
   })
 })
 

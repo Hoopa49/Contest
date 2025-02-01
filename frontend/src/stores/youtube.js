@@ -141,16 +141,13 @@ export const useYoutubeStore = defineStore('youtube', {
         this.error = null;
         const response = await youtubeService.getContestVideos(params);
         
-        if (!response || !response.data) {
+        if (!response) {
           console.warn('Получен пустой ответ от сервера');
           return { videos: [], total: 0, page: 1, totalPages: 1 };
         }
         
-        // Проверяем структуру данных
-        const { videos = [], total = 0, page = 1, totalPages = 1 } = response.data;
-        
-        // Сохраняем только массив видео в state
-        this.videos = videos.map(video => ({
+        // Сохраняем массив видео в state
+        this.videos = response.videos.map(video => ({
           ...video,
           thumbnail_url: video.thumbnail_url || '',
           title: video.title || '',
@@ -161,9 +158,9 @@ export const useYoutubeStore = defineStore('youtube', {
         
         return {
           videos: this.videos,
-          total,
-          page: parseInt(page),
-          totalPages: parseInt(totalPages)
+          total: response.total,
+          page: response.page,
+          totalPages: response.totalPages
         };
       } catch (error) {
         console.error('Ошибка при загрузке видео:', error);
@@ -176,34 +173,36 @@ export const useYoutubeStore = defineStore('youtube', {
 
     async getContestChannels(params) {
       try {
-        this.isLoading = true
-        this.error = null
-        const response = await youtubeService.getContestChannels(params)
+        this.isLoading = true;
+        this.error = null;
+        const response = await youtubeService.getContestChannels(params);
         
-        if (!response || !response.data) {
-          console.warn('Получен пустой ответ от сервера')
-          return { channels: [], total: 0, page: 1, totalPages: 1 }
+        if (!response) {
+          console.warn('Получен пустой ответ от сервера');
+          return { channels: [], total: 0, page: 1, totalPages: 1 };
         }
         
-        // Проверяем структуру данных
-        const { channels = [], total = 0, page = 1, totalPages = 1 } = response.data
-        
-        // Сохраняем только массив каналов в state
-        this.channels = channels.map(channel => ({
+        // Сохраняем массив каналов в state
+        this.channels = response.channels.map(channel => ({
           ...channel,
           contest_videos_count: channel.contest_videos_count || 0,
           total_videos: channel.total_videos || 0,
           subscriber_count: channel.subscriber_count || 0,
           thumbnail_url: channel.thumbnail_url || ''
-        }))
+        }));
         
-        return { channels: this.channels, total, page, totalPages }
+        return {
+          channels: this.channels,
+          total: response.total,
+          page: response.page,
+          totalPages: response.totalPages
+        };
       } catch (error) {
-        console.error('Ошибка при загрузке каналов:', error)
-        this.error = error?.response?.data?.message || error.message || 'Неизвестная ошибка'
-        return { channels: [], total: 0, page: 1, totalPages: 1 }
+        console.error('Ошибка при загрузке каналов:', error);
+        this.error = error?.response?.data?.message || error.message || 'Неизвестная ошибка';
+        return { channels: [], total: 0, page: 1, totalPages: 1 };
       } finally {
-        this.isLoading = false
+        this.isLoading = false;
       }
     },
 
@@ -447,6 +446,33 @@ export const useYoutubeStore = defineStore('youtube', {
       this.searchResults = []
       this.searchTotal = 0
       this.nextPageToken = null
+    },
+
+    async getStats() {
+      try {
+        this.isLoading = true;
+        this.error = null;
+        
+        console.log('Запрос статистики YouTube');
+        const response = await youtubeService.getStats();
+        
+        if (!response || !response.data) {
+          console.warn('Получен пустой ответ от сервера');
+          this.contestStats = null;
+          return null;
+        }
+        
+        console.log('Получены данные статистики:', response.data);
+        this.contestStats = response.data;
+        return response;
+      } catch (error) {
+        console.error('Ошибка при получении статистики:', error);
+        this.error = error?.response?.data?.message || error.message || 'Неизвестная ошибка';
+        this.contestStats = null;
+        return null;
+      } finally {
+        this.isLoading = false;
+      }
     }
   }
 }) 

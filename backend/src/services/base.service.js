@@ -7,9 +7,27 @@ const { NotFoundError } = require('../utils/errors')
 const { logger } = require('../logging')
 
 class BaseService {
-  constructor(model) {
-    this.model = model
-    this.modelName = model.name
+  constructor(modelName) {
+    this.modelName = modelName
+    this.model = null
+  }
+
+  init(models) {
+    if (!models[this.modelName]) {
+      throw new Error(`Model ${this.modelName} not found`)
+    }
+    this.model = models[this.modelName]
+    this.models = models
+    logger.info(`Service initialized with model: ${this.modelName}`)
+  }
+
+  /**
+   * Проверка инициализации модели
+   */
+  checkModel() {
+    if (!this.model) {
+      throw new Error(`Model ${this.modelName} is not initialized`)
+    }
   }
 
   /**
@@ -18,18 +36,19 @@ class BaseService {
    * @returns {Promise<Object>} Созданная запись
    */
   async create(data) {
+    this.checkModel()
     try {
       const item = await this.model.create(data)
       
       logger.info('Создана новая запись:', { 
-        model: this.model.name,
+        model: this.modelName,
         id: item.id 
       })
       
       return item
     } catch (error) {
       logger.error('Ошибка создания записи:', {
-        model: this.model.name,
+        model: this.modelName,
         error: error.message
       })
       throw error
@@ -48,7 +67,7 @@ class BaseService {
       
       if (!item) {
         logger.warn('Запись не найдена:', { 
-          model: this.model.name,
+          model: this.modelName,
           id 
         })
       }
@@ -56,7 +75,7 @@ class BaseService {
       return item
     } catch (error) {
       logger.error('Ошибка поиска записи:', {
-        model: this.model.name,
+        model: this.modelName,
         id,
         error: error.message
       })
@@ -112,7 +131,7 @@ class BaseService {
       
       if (!item) {
         logger.warn('Запись не найдена:', { 
-          model: this.model.name,
+          model: this.modelName,
           id 
         })
         return null
@@ -120,14 +139,14 @@ class BaseService {
       
       await item.update(data)
       logger.info('Запись обновлена:', { 
-        model: this.model.name,
+        model: this.modelName,
         id 
       })
       
       return item
     } catch (error) {
       logger.error('Ошибка обновления записи:', {
-        model: this.model.name,
+        model: this.modelName,
         id,
         error: error.message
       })
@@ -146,7 +165,7 @@ class BaseService {
       
       if (!item) {
         logger.warn('Запись не найдена:', { 
-          model: this.model.name,
+          model: this.modelName,
           id 
         })
         return false
@@ -154,14 +173,14 @@ class BaseService {
       
       await item.destroy()
       logger.info('Запись удалена:', { 
-        model: this.model.name,
+        model: this.modelName,
         id 
       })
       
       return true
     } catch (error) {
       logger.error('Ошибка удаления записи:', {
-        model: this.model.name,
+        model: this.modelName,
         id,
         error: error.message
       })

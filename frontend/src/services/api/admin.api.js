@@ -149,7 +149,12 @@ class AdminAPI {
    * Получение активности интеграций
    */
   async getIntegrationActivity(timeRange) {
-    const { data } = await http.get('/admin/integrations/activity', { params: { timeRange } })
+    const { data } = await http.get('/admin/integrations/activity', { 
+      params: { 
+        timeRange,
+        _t: Date.now() // Добавляем timestamp для предотвращения кэширования
+      } 
+    })
     return data
   }
 

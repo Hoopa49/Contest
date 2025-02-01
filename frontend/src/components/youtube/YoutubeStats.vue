@@ -5,7 +5,7 @@
         <v-card>
           <v-card-text class="text-center">
             <div class="text-h6">Всего конкурсов</div>
-            <div class="text-h4">{{ stats.total_contests || 0 }}</div>
+            <div class="text-h4">{{ formatNumber(stats.total_contests) }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -13,7 +13,7 @@
         <v-card>
           <v-card-text class="text-center">
             <div class="text-h6">Активных конкурсов</div>
-            <div class="text-h4">{{ stats.active_contests || 0 }}</div>
+            <div class="text-h4">{{ formatNumber(stats.active_contests) }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -21,7 +21,7 @@
         <v-card>
           <v-card-text class="text-center">
             <div class="text-h6">Каналов с конкурсами</div>
-            <div class="text-h4">{{ stats.channels_count || 0 }}</div>
+            <div class="text-h4">{{ formatNumber(stats.channels_count) }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -29,7 +29,7 @@
         <v-card>
           <v-card-text class="text-center">
             <div class="text-h6">Средний призовой фонд</div>
-            <div class="text-h4">{{ formatNumber(stats.avg_prize_value || 0) }} ₽</div>
+            <div class="text-h4">{{ formatNumber(stats.avg_prize_value) }} ₽</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -69,19 +69,9 @@
             </template>
             <v-list-item-title>{{ type.name }}</v-list-item-title>
             <template v-slot:append>
-              <div class="d-flex align-center">
-                <span class="mr-2">{{ type.count }}</span>
-                <v-progress-linear
-                  :model-value="type.percentage"
-                  :color="getProgressColor(type.percentage)"
-                  height="20"
-                  rounded
-                >
-                  <template v-slot:default="{ value }">
-                    <span>{{ Math.ceil(value) }}%</span>
-                  </template>
-                </v-progress-linear>
-              </div>
+              <v-chip color="primary">
+                {{ type.count }} ({{ type.percentage }}%)
+              </v-chip>
             </template>
           </v-list-item>
         </v-list>
@@ -92,7 +82,9 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import Chart from 'chart.js/auto'
+import { Chart } from 'chart.js/auto'
+import { format } from 'date-fns'
+import { ru } from 'date-fns/locale'
 
 const props = defineProps({
   stats: {
@@ -119,79 +111,51 @@ const contestTypes = computed(() => {
     console.log('Нет данных о типах конкурсов')
     return []
   }
-  
-  const total = props.stats.contest_types.reduce((sum, type) => sum + (type.count || 0), 0)
-  return props.stats.contest_types.map(type => ({
-    name: type.name || 'Неизвестный тип',
-    count: type.count || 0,
-    percentage: total > 0 ? ((type.count || 0) / total) * 100 : 0
-  }))
+  return props.stats.contest_types
 })
 
 // Преобразуем данные для графика
 const chartData = computed(() => {
   if (!props.stats.daily_stats || !Array.isArray(props.stats.daily_stats)) {
-    console.log('Нет данных для графика');
-    return { labels: [], datasets: [] };
+    console.log('Нет данных для графика')
+    return { labels: [], datasets: [] }
   }
   
   const labels = props.stats.daily_stats.map(day => {
     try {
-      return new Date(day.date).toLocaleDateString('ru-RU');
+      return format(new Date(day.date), 'd MMM', { locale: ru })
     } catch (e) {
-      console.error('Ошибка при форматировании даты:', e);
-      return 'Неизвестная дата';
+      console.error('Ошибка при форматировании даты:', e)
+      return 'Неизвестная дата'
     }
-  });
+  })
   
   const data = {
     labels,
     datasets: [{
-      label: selectedMetric.value === 'contests' ? 'Конкурсы' : 
+      label: selectedMetric.value === 'contests' ? 'Конкурсы' :
              selectedMetric.value === 'views' ? 'Просмотры' : 'Участники',
-      data: props.stats.daily_stats.map(day => {
-        const value = day[selectedMetric.value];
-        return typeof value === 'number' ? value : 0;
-      }),
+      data: props.stats.daily_stats.map(day => 
+        selectedMetric.value === 'contests' ? day.contests :
+        selectedMetric.value === 'views' ? day.views : day.participants
+      ),
       borderColor: selectedMetric.value === 'contests' ? '#1976D2' :
-                  selectedMetric.value === 'views' ? '#4CAF50' : '#FFC107',
-      backgroundColor: selectedMetric.value === 'contests' ? 'rgba(25, 118, 210, 0.1)' :
-                      selectedMetric.value === 'views' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 193, 7, 0.1)',
-      tension: 0.1,
-      borderWidth: 2,
-      pointRadius: 3,
-      pointHoverRadius: 5,
-      fill: true
+                  selectedMetric.value === 'views' ? '#4CAF50' : '#FF9800',
+      backgroundColor: selectedMetric.value === 'contests' ? '#1976D233' :
+                      selectedMetric.value === 'views' ? '#4CAF5033' : '#FF980033',
+      fill: true,
+      tension: 0.4
     }]
-  };
+  }
   
-  return data;
+  return data
 })
 
 const updateChart = () => {
-  if (!activityChart.value) {
-    console.log('Canvas элемент не найден')
-    return
-  }
-
   if (chart) {
     chart.destroy()
   }
-
-  // Находим максимальное значение для текущей метрики
-  const maxValue = Math.max(...props.stats.daily_stats.map(day => day[selectedMetric.value] || 0))
   
-  // Вычисляем оптимальный шаг для делений
-  const calculateStepSize = (max) => {
-    if (max <= 10) return 1
-    if (max <= 100) return 10
-    if (max <= 1000) return 100
-    if (max <= 10000) return 1000
-    return Math.pow(10, Math.floor(Math.log10(max / 10)))
-  }
-
-  const stepSize = calculateStepSize(maxValue)
-
   const ctx = activityChart.value.getContext('2d')
   chart = new Chart(ctx, {
     type: 'line',
@@ -199,16 +163,22 @@ const updateChart = () => {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      scales: {
+        x: {
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: '#f0f0f0'
+          }
+        }
+      },
       plugins: {
         legend: {
-          position: 'top',
-          labels: {
-            usePointStyle: true,
-            padding: 15,
-            font: {
-              size: 12
-            }
-          }
+          display: false
         },
         tooltip: {
           mode: 'index',
@@ -218,53 +188,11 @@ const updateChart = () => {
             weight: 'bold'
           },
           bodySpacing: 4,
-          padding: 10,
-          callbacks: {
-            label: function(context) {
-              let label = context.dataset.label || ''
-              if (label) {
-                label += ': '
-              }
-              if (context.parsed.y !== null) {
-                label += formatNumber(context.parsed.y)
-              }
-              return label
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: {
-            display: false
-          },
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45
-          }
-        },
-        y: {
-          beginAtZero: true,
-          grid: {
-            color: 'rgba(200, 200, 200, 0.2)'
-          },
-          ticks: {
-            callback: function(value) {
-              return formatNumber(value)
-            },
-            stepSize: stepSize,
-            maxTicksLimit: 10
-          }
+          padding: 10
         }
       }
     }
   })
-}
-
-const getProgressColor = (percentage) => {
-  if (percentage >= 70) return 'success'
-  if (percentage >= 30) return 'warning'
-  return 'error'
 }
 
 const formatNumber = (num) => {
@@ -272,19 +200,18 @@ const formatNumber = (num) => {
   return new Intl.NumberFormat('ru-RU').format(num)
 }
 
-watch(() => selectedMetric.value, () => {
-  console.log('Метрика изменена:', selectedMetric.value)
-  if (chart) {
-    updateChart()
-  }
-})
-
 watch(() => props.stats.daily_stats, () => {
   console.log('Данные статистики обновлены:', props.stats.daily_stats)
   if (chart) {
     updateChart()
   }
 }, { deep: true })
+
+watch(() => selectedMetric.value, () => {
+  if (chart) {
+    updateChart()
+  }
+})
 
 onMounted(() => {
   console.log('Компонент смонтирован, данные:', props.stats)
@@ -295,7 +222,28 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.v-progress-linear {
-  width: 200px;
+.youtube-stats {
+  padding: 16px;
+}
+
+.v-card {
+  height: 100%;
+}
+
+.v-card-text {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.text-h4 {
+  margin-top: 8px;
+  font-weight: bold;
+}
+
+canvas {
+  width: 100% !important;
+  height: 400px !important;
 }
 </style> 

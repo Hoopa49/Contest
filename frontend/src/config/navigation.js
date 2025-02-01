@@ -55,6 +55,6 @@ export const adminMenuItems = [
   {
     title: 'Админ панель',
     icon: 'mdi-shield-crown',
-    to: { name: 'Admin' }
+    to: { name: 'admin-dashboard' }
   }
 ] 

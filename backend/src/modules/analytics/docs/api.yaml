@@ -1,0 +1,238 @@
+openapi: 3.0.0
+paths:
+  /admin/analytics:
+    post:
+      tags:
+        - Analytics
+      summary: Сохранить аналитические данные
+      description: Сохраняет новые аналитические данные
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - date
+                - category
+                - metrics
+                - dimensions
+              properties:
+                date:
+                  type: string
+                  format: date
+                  description: Дата аналитики
+                category:
+                  type: string
+                  description: Категория аналитики
+                metrics:
+                  type: object
+                  description: Метрики
+                dimensions:
+                  type: object
+                  description: Измерения
+                metadata:
+                  type: object
+                  description: Дополнительные метаданные
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/AnalyticsData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/analytics/{category}:
+    get:
+      tags:
+        - Analytics
+      summary: Получить аналитику по категории за период
+      description: Возвращает аналитические данные для указанной категории за период
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Категория аналитики
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Начальная дата периода
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Конечная дата периода
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnalyticsData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/analytics/{category}/latest:
+    get:
+      tags:
+        - Analytics
+      summary: Получить последние аналитические данные
+      description: Возвращает последние аналитические данные для указанной категории
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Категория аналитики
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: Количество записей
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnalyticsData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/analytics/{category}/aggregate:
+    get:
+      tags:
+        - Analytics
+      summary: Получить агрегированные метрики
+      description: Возвращает агрегированные метрики для указанной категории за период
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Категория аналитики
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Начальная дата периода
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Конечная дата периода
+        - name: metrics
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Список метрик через запятую
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: number
+                    description: Агрегированные значения метрик
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  schemas:
+    AnalyticsData:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор записи
+        date:
+          type: string
+          format: date
+          description: Дата аналитики
+        category:
+          type: string
+          description: Категория аналитики
+        metrics:
+          type: object
+          description: Метрики
+        dimensions:
+          type: object
+          description: Измерения
+        metadata:
+          type: object
+          description: Дополнительные метаданные
+        created_at:
+          type: string
+          format: date-time
+          description: Дата создания записи
+        updated_at:
+          type: string
+          format: date-time
+          description: Дата последнего обновления записи

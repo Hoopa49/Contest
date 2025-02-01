@@ -9,6 +9,7 @@ import * as directives from 'vuetify/directives'
 import { ru } from 'vuetify/locale'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import '@mdi/font/css/materialdesignicons.css'
+import '@/assets/styles/fonts.css'
 import 'vuetify/styles'
 
 // Создаем экземпляр Vuetify

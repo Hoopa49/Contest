@@ -111,7 +111,7 @@ class YoutubeVideo extends Model {
   }
 
   static associate(models) {
-    this.belongsTo(models.youtube_channel, {
+    this.belongsTo(models.YoutubeChannel, {
       foreignKey: 'channel_id',
       targetKey: 'channel_id',
       as: 'channel'

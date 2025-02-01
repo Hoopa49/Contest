@@ -24,7 +24,10 @@ class YoutubeController extends BaseController {
     this.toggleIntegration = this.handleAsync(this.toggleIntegration.bind(this));
     this.getContestVideos = this.handleAsync(this.getContestVideos.bind(this));
     this.getContestChannels = this.handleAsync(this.getContestChannels.bind(this));
+    this.searchVideos = this.handleAsync(this.searchVideos.bind(this));
+    this.getVideoDetails = this.handleAsync(this.getVideoDetails.bind(this));
     this.quotaService = quotaService;
+    this.youtubeApi = youtubeApi;
   }
 
   /**
@@ -269,64 +272,22 @@ class YoutubeController extends BaseController {
         timestamp: new Date().toISOString()
       });
       
-      // Получаем базовую статистику
+      // Получаем статистику
       const stats = await youtubeAnalyticsService.getStats(parsedDays);
       
-      // Получаем статистику квоты API
-      const quotaStats = await this.quotaService.getQuotaStats(parsedDays);
-      
-      // Получаем настройки интеграции
-      const settings = await YoutubeSettings.findOne();
-
-      // Получаем статистику интеграции
-      const integrationStats = await IntegrationStats.findOne({
-        where: { platform: 'youtube' }
-      });
-
-      // Проверяем наличие всех необходимых данных
-      if (!stats || !quotaStats || !settings || !integrationStats) {
-        logger.warn('Отсутствуют некоторые данные для статистики:', {
-          hasStats: !!stats,
-          hasQuotaStats: !!quotaStats,
-          hasSettings: !!settings,
-          hasIntegrationStats: !!integrationStats,
-          userId: req.user?.id,
-          timestamp: new Date().toISOString()
-        });
-      }
-      
-      const response = {
-        totalRequests: integrationStats?.total_requests || 0,
-        successfulRequests: integrationStats?.successful_requests || 0,
-        failedRequests: integrationStats?.failed_requests || 0,
-        platforms: {
-          youtube: {
-            enabled: settings?.enabled || false,
-            lastSync: quotaStats?.history?.[quotaStats.history.length - 1]?.date || null,
-            contestsFound: stats?.total_contests || 0,
-            errorCount: quotaStats?.totals?.totalErrors || 0,
-            requests: quotaStats?.totals?.totalUsed || 0,
-            successfulRequests: integrationStats?.successful_requests || 0,
-            failedRequests: integrationStats?.failed_requests || 0
-          }
-        }
-      };
-
       logger.trace('Получена статистика YouTube:', {
-        enabled: settings?.enabled,
-        contestsFound: stats?.total_contests,
-        errorCount: quotaStats?.totals?.totalErrors,
-        requests: quotaStats?.totals?.totalUsed,
-        totalRequests: response.totalRequests,
-        successfulRequests: response.successfulRequests,
-        failedRequests: response.failedRequests,
-        lastSync: response.platforms.youtube.lastSync,
+        total_contests: stats.total_contests,
+        active_contests: stats.active_contests,
+        channels_count: stats.channels_count,
+        avg_prize_value: stats.avg_prize_value,
+        contest_types: stats.contest_types.length,
+        daily_stats: stats.daily_stats.length,
         days: parsedDays,
         userId: req.user?.id,
         timestamp: new Date().toISOString()
       });
 
-      return this.sendSuccess(res, response);
+      return this.sendSuccess(res, stats);
     } catch (error) {
       logger.error('Ошибка при получении статистики:', {
         days: req.query.days,

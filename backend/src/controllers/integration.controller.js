@@ -1,5 +1,6 @@
 const { logger } = require('../logging')
 const integrationService = require('../services/integration.service')
+const { initializeModels } = require('../models')
 
 class IntegrationController {
   constructor() {
@@ -9,6 +10,26 @@ class IntegrationController {
     this.getActivity = this.getActivity.bind(this)
     this.toggleIntegration = this.toggleIntegration.bind(this)
     this.runSearch = this.runSearch.bind(this)
+    this.initialized = false
+  }
+
+  async init() {
+    try {
+      // Инициализируем модели
+      const models = await initializeModels()
+      
+      // Инициализируем сервис с моделями
+      integrationService.init(models)
+      this.initialized = true
+
+      logger.info('IntegrationController initialized successfully')
+    } catch (error) {
+      logger.error('Ошибка инициализации контроллера:', {
+        error: error.message,
+        stack: error.stack
+      })
+      throw error
+    }
   }
 
   async getStats(req, res) {
@@ -42,17 +63,43 @@ class IntegrationController {
 
   async getActivity(req, res) {
     try {
+      if (!this.initialized) {
+        logger.error('Контроллер не инициализирован')
+        return res.status(500).json({
+          success: false,
+          message: 'Сервис не инициализирован'
+        })
+      }
+
       const { timeRange } = req.query
+      
+      if (!timeRange) {
+        logger.warn('Не указан временной диапазон')
+        return res.status(400).json({
+          success: false,
+          message: 'Не указан временной диапазон'
+        })
+      }
+
       const activity = await integrationService.getActivity(timeRange)
-      res.json({
+      
+      logger.info('Получены данные активности:', {
+        timeRange,
+        hasPlatforms: Object.keys(activity.byPlatform).length > 0,
+        hasUsers: Object.keys(activity.userActions).length > 0
+      })
+
+      return res.json({
         success: true,
         data: activity
       })
+
     } catch (error) {
       logger.error('Error getting integration activity:', error)
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-        message: 'Ошибка при получении активности интеграций'
+        message: 'Ошибка при получении активности интеграций',
+        error: error.message || 'Неизвестная ошибка'
       })
     }
   }
@@ -92,4 +139,10 @@ class IntegrationController {
   }
 }
 
-module.exports = new IntegrationController() 
+const controller = new IntegrationController()
+controller.init().catch(error => {
+  logger.error('Failed to initialize integration controller:', error)
+  process.exit(1)
+})
+
+module.exports = controller 

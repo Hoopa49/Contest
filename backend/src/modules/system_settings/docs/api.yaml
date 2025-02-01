@@ -1,0 +1,183 @@
+openapi: 3.0.0
+paths:
+  /admin/system-settings:
+    get:
+      tags:
+        - System Settings
+      summary: Получить все активные системные настройки
+      description: Возвращает список всех активных системных настроек
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SystemSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/system-settings/{category}:
+    get:
+      tags:
+        - System Settings
+      summary: Получить настройки по категории
+      description: Возвращает системные настройки для указанной категории
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Категория настроек
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SystemSettings'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - System Settings
+      summary: Создать или обновить настройки
+      description: Создает новые или обновляет существующие системные настройки
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Категория настроек
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - settings
+              properties:
+                settings:
+                  type: object
+                  description: Объект с настройками
+                description:
+                  type: string
+                  description: Описание настроек
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SystemSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - System Settings
+      summary: Деактивировать настройки
+      description: Деактивирует системные настройки указанной категории
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Категория настроек
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SystemSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  schemas:
+    SystemSettings:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор настроек
+        category:
+          type: string
+          description: Категория настроек
+        settings:
+          type: object
+          description: Объект с настройками
+        description:
+          type: string
+          description: Описание настроек
+        is_active:
+          type: boolean
+          description: Активны ли настройки
+        updated_by:
+          type: string
+          format: uuid
+          description: ID пользователя, последним обновившего настройки
+        created_at:
+          type: string
+          format: date-time
+          description: Дата создания
+        updated_at:
+          type: string
+          format: date-time
+          description: Дата последнего обновления 

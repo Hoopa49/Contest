@@ -46,8 +46,8 @@ export const useStoreHelpers = () => {
       const result = await action()
       
       // Проверяем результат
-      if (result === undefined) {
-        console.warn(`[${storeName}] Action returned undefined`)
+      if (result === undefined || result === null) {
+        console.warn(`[${storeName}] Action returned ${result}`)
         return { success: false, error: 'Действие не вернуло результат' }
       }
       

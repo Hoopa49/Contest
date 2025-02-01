@@ -5,7 +5,8 @@ const {
   User, 
   FavoriteContest,
   ContestParticipation,
-  ContestStats
+  ContestStats,
+  sequelize
 } = require('../../../models')
 const contestStatsService = require('../../../services/contest_stats.service')
 const { ValidationError, ForbiddenError } = require('../../../utils/errors')
@@ -598,7 +599,7 @@ class ContestService extends BaseService {
   async toggleFavorite(contestId, userId) {
     logger.info('Изменение статуса избранного:', { contestId, userId })
 
-    const transaction = await models.sequelize.transaction()
+    const transaction = await sequelize.transaction()
 
     try {
       // Получаем конкурс для контекста

@@ -74,7 +74,7 @@ class YoutubeChannel extends Model {
   }
 
   static associate(models) {
-    this.hasMany(models.youtube_video, {
+    this.hasMany(models.YoutubeVideo, {
       foreignKey: 'channel_id',
       sourceKey: 'channel_id',
       as: 'videos'
