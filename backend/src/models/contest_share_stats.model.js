@@ -1,7 +1,7 @@
 'use strict'
 
 const { Model, DataTypes } = require('sequelize')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class ContestShareStats extends Model {
   static init(sequelize) {

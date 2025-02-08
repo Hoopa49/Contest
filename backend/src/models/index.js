@@ -4,7 +4,7 @@
  */
 
 const sequelize = require('../config/database')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 // Импорт моделей
 const User = require('./user.model')
@@ -33,38 +33,33 @@ const IntegrationActivity = require('./integration_activities.model')
 const AnalyticsData = require('./analytics_data.model')
 
 let initialized = false
+let models = null
 
 // Инициализируем модели и устанавливаем ассоциации
 const initializeModels = async () => {
   if (initialized) {
-    return {
-      User, Contest, DraftContest, Settings, SystemSettings, Log,
-      ContestParticipation, FavoriteContest, Notification, NotificationSettings,
-      ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
-      YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
-      YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
-      AnalyticsData
-    }
+    return models;
   }
 
   try {
     // Инициализируем каждую модель
-    [
+    const modelsList = [
       User, Contest, DraftContest, Settings, SystemSettings, Log,
       ContestParticipation, FavoriteContest, Notification, NotificationSettings,
       ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
       YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
       YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
       AnalyticsData
-    ].forEach(model => {
+    ];
+
+    modelsList.forEach(model => {
       if (model && typeof model.init === 'function') {
         model.init(sequelize)
-        logger.debug(`Model ${model.name} initialized`)
       }
     })
 
-    // Устанавливаем ассоциации после того, как все модели инициализированы
-    const models = {
+    // Создаем объект моделей
+    models = {
       User, Contest, DraftContest, Settings, SystemSettings, Log,
       ContestParticipation, FavoriteContest, Notification, NotificationSettings,
       ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
@@ -73,10 +68,10 @@ const initializeModels = async () => {
       AnalyticsData
     }
 
+    // Устанавливаем ассоциации
     Object.values(models).forEach(model => {
       if (model && typeof model.associate === 'function') {
         model.associate(models)
-        logger.debug(`Associations set for model ${model.name}`)
       }
     })
 
@@ -96,15 +91,9 @@ const initializeModels = async () => {
   }
 }
 
-// Экспортируем модели и функцию инициализации
+// Экспортируем только функцию инициализации
+// Модели будут доступны только после вызова initializeModels
 module.exports = {
-  User, Contest, DraftContest, Settings, SystemSettings, Log,
-  ContestParticipation, FavoriteContest, Notification, NotificationSettings,
-  ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
-  YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
-  YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
-  AnalyticsData,
-  sequelize,
   initializeModels,
   isInitialized: () => initialized
 } 

@@ -3,8 +3,12 @@
  * Централизованная обработка всех ошибок приложения
  */
 
-const { logger } = require('../logging')
-const { AppError, AuthenticationError } = require('../utils/errors')
+const { 
+  ValidationError, 
+  AuthenticationError, 
+  NotFoundError 
+} = require('../utils/errors')
+const logger = require('../logging')
 
 // Обработка ошибок валидации Sequelize
 const handleSequelizeValidationError = (err) => {

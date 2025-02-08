@@ -4,7 +4,7 @@
 
 const systemSettingsService = require('../services/system_settings.service')
 const { ValidationError } = require('../utils/errors')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class SystemSettingsController {
   /**

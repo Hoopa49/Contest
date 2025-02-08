@@ -3,7 +3,7 @@
  */
 
 const BaseService = require('./base.service')
-const { logger } = require('../logging')
+const logger = require('../logging')
 const { ValidationError } = require('../utils/errors')
 
 class SystemSettingsService extends BaseService {
@@ -13,7 +13,6 @@ class SystemSettingsService extends BaseService {
 
   async init(models) {
     await super.init(models)
-    logger.info('SystemSettingsService initialized')
   }
 
   /**

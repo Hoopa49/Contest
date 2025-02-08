@@ -3,8 +3,8 @@
  * Содержит общие методы для обработки HTTP запросов и форматирования ответов
  */
 
-const { ValidationError, ApiError } = require('../utils/errors')
-const { logger } = require('../logging')
+const { ApiError, ErrorTypes } = require('../utils/errors')
+const logger = require('../logging')
 const ApiResponse = require('../utils/api-response')
 
 class BaseController {
@@ -35,47 +35,68 @@ class BaseController {
   /**
    * Отправка ответа с ошибкой
    */
-  sendError(res, error, status = 500) {
-    const errorObj = typeof error === 'string' ? { message: error } : error
+  sendError(res, error) {
+    let errorObj;
+    
+    if (typeof error === 'string') {
+      errorObj = new ApiError(error, 500);
+    } else if (error instanceof Error) {
+      if (error instanceof ApiError || error instanceof ValidationError) {
+        errorObj = error;
+      } else {
+        errorObj = new ApiError(
+          error.message || 'Внутренняя ошибка сервера',
+          500,
+          'INTERNAL_ERROR',
+          {
+            name: error.name,
+            stack: error.stack,
+            details: error.details || error.errors || null
+          }
+        );
+      }
+    } else {
+      errorObj = new ApiError('Неизвестная ошибка', 500);
+    }
 
     // Логируем детали ошибки
     logger.error('Ошибка обработки запроса', {
       metadata: {
         error: {
-          status,
-          message: errorObj?.message || 'Неизвестная ошибка',
-          stack: errorObj?.stack,
-          name: errorObj?.name,
-          code: errorObj?.code
+          status: errorObj.status || 500,
+          message: errorObj.message,
+          code: errorObj.code || 'INTERNAL_ERROR',
+          name: errorObj.name,
+          details: errorObj.details || null,
+          stack: process.env.NODE_ENV !== 'production' ? errorObj.stack : undefined
         },
-        validation_errors: errorObj?.errors,
-        timestamp: new Date().toISOString()
+        request: {
+          path: res.req?.path,
+          method: res.req?.method,
+          query: res.req?.query,
+          params: res.req?.params,
+          user: res.req?.user ? { id: res.req.user.id, email: res.req.user.email } : null
+        }
       }
-    })
+    });
 
-    // Определяем статус и тип ответа
-    const responseStatus = errorObj?.statusCode || status
+    // Формируем ответ клиенту
+    const errorResponse = {
+      success: false,
+      error: {
+        message: errorObj.message,
+        code: errorObj.code || 'INTERNAL_ERROR',
+        status: errorObj.status || 500
+      }
+    };
 
-    switch (responseStatus) {
-      case 401:
-        return res.status(responseStatus).json(ApiResponse.authError(errorObj.message))
-      case 403:
-        return res.status(responseStatus).json(ApiResponse.forbidden(errorObj.message))
-      case 404:
-        return res.status(responseStatus).json(ApiResponse.notFound(errorObj.message))
-      case 422:
-        return res.status(responseStatus).json(
-          ApiResponse.validationError(errorObj.errors, errorObj.message)
-        )
-      default:
-        return res.status(responseStatus).json(
-          ApiResponse.error(
-            errorObj.message || 'Внутренняя ошибка сервера',
-            responseStatus,
-            errorObj.errors
-          )
-        )
+    // Добавляем дополнительные детали только для не продакшн окружения
+    if (process.env.NODE_ENV !== 'production') {
+      errorResponse.error.details = errorObj.details || null;
+      errorResponse.error.stack = errorObj.stack;
     }
+
+    res.status(errorObj.status || 500).json(errorResponse);
   }
 
   /**
@@ -102,19 +123,55 @@ class BaseController {
   handleAsync(handler) {
     return async (req, res, next) => {
       try {
-        await handler(req, res, next)
+        await handler(req, res, next);
       } catch (error) {
-        let status = 500
-        
-        if (error instanceof ValidationError) {
-          status = 422
-        } else if (error instanceof ApiError && error.statusCode === 409) {
-          status = 409
+        let errorObj;
+
+        // Определяем тип ошибки и создаем соответствующий объект
+        if (error instanceof ApiError) {
+          errorObj = error;
+        } else if (error.name === 'SequelizeValidationError') {
+          errorObj = ErrorTypes.VALIDATION(
+            'Ошибка валидации данных',
+            error.errors.map(e => ({ field: e.path, message: e.message }))
+          );
+        } else if (error.name === 'SequelizeDatabaseError') {
+          errorObj = ErrorTypes.DATABASE(
+            'Ошибка базы данных',
+            process.env.NODE_ENV === 'development' ? error.message : undefined
+          );
+        } else {
+          errorObj = new ApiError(
+            error.message || 'Внутренняя ошибка сервера',
+            500,
+            'INTERNAL_ERROR',
+            process.env.NODE_ENV === 'development' ? error.stack : undefined
+          );
         }
 
-        return this.sendError(res, error, status)
+        // Логируем ошибку
+        logger.error('Ошибка в контроллере:', {
+          error: {
+            message: errorObj.message,
+            code: errorObj.code,
+            status: errorObj.status,
+            details: errorObj.details,
+            stack: error.stack
+          },
+          request: {
+            method: req.method,
+            url: req.url,
+            params: req.params,
+            query: req.query,
+            body: req.body,
+            user: req.user?.id
+          }
+        });
+
+        // Отправляем ответ с ошибкой
+        this.sendError(res, errorObj);
       }
-    }
+    };
   }
 
   /**

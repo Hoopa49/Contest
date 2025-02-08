@@ -1,0 +1,14 @@
+{
+  "ignore": [
+    "logs/*",
+    "*.log",
+    "../logs/*",
+    "../*.log",
+    "**/logs/*",
+    "**/*.log"
+  ],
+  "watch": [
+    "src/"
+  ],
+  "ext": "js,json"
+} 

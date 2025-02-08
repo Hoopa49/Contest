@@ -1,20 +1,39 @@
 const { Op } = require('sequelize')
-const { logger } = require('../../../logging')
-const { 
-  Contest, 
-  User, 
-  FavoriteContest,
-  ContestParticipation,
-  ContestStats,
-  sequelize
-} = require('../../../models')
+const logger = require('../../../logging')
 const contestStatsService = require('../../../services/contest_stats.service')
 const { ValidationError, ForbiddenError } = require('../../../utils/errors')
 const BaseService = require('../../../services/base.service')
+const { initializeModels } = require('../../../models')
 
 class ContestService extends BaseService {
   constructor() {
-    super(Contest)
+    super('Contest')
+    this.models = null
+    this.initializeService()
+  }
+
+  async initializeService() {
+    try {
+      this.models = await initializeModels()
+      if (!this.models) {
+        throw new Error('Не удалось инициализировать модели')
+      }
+    } catch (error) {
+      logger.error('Ошибка инициализации ContestService:', {
+        error: error.message,
+        stack: error.stack
+      })
+    }
+  }
+
+  async ensureModels() {
+    if (!this.models) {
+      this.models = await initializeModels()
+      if (!this.models) {
+        throw new Error('Не удалось инициализировать модели')
+      }
+    }
+    return this.models
   }
 
   // Преобразование snake_case в camelCase
@@ -152,6 +171,7 @@ class ContestService extends BaseService {
   }
 
   async getAllContests({ page = 1, limit = 10, status }) {
+    await this.ensureModels()
     const offset = (page - 1) * limit
     const where = {}
     
@@ -160,11 +180,11 @@ class ContestService extends BaseService {
     }
 
     try {
-      const { count, rows } = await Contest.findAndCountAll({
+      const { count, rows } = await this.models.Contest.findAndCountAll({
         where,
         include: [
           {
-            model: User,
+            model: this.models.User,
             as: 'author',
             attributes: ['id', 'first_name', 'last_name', 'email']
           }
@@ -203,6 +223,7 @@ class ContestService extends BaseService {
   }
 
   async getContestsWithPagination({ page = 1, perPage = 12, search, platformType, status, sortBy, userId }) {
+    await this.ensureModels()
     try {
       const where = {}
       
@@ -224,12 +245,12 @@ class ContestService extends BaseService {
 
       const includes = [
         {
-          model: User,
+          model: this.models.User,
           as: 'author',
           attributes: ['id', 'first_name', 'last_name', 'email']
         },
         {
-          model: ContestStats,
+          model: this.models.ContestStats,
           as: 'stats',
           attributes: ['views_count', 'participants_count', 'favorites_count', 'rating']
         }
@@ -237,7 +258,7 @@ class ContestService extends BaseService {
 
       if (userId) {
         includes.push({
-          model: FavoriteContest,
+          model: this.models.FavoriteContest,
           as: 'favorites',
           where: { user_id: userId },
           required: false,
@@ -245,7 +266,7 @@ class ContestService extends BaseService {
         })
       }
 
-      const { count, rows } = await Contest.findAndCountAll({
+      const { count, rows } = await this.models.Contest.findAndCountAll({
         where,
         include: includes,
         limit: perPage,
@@ -317,18 +338,19 @@ class ContestService extends BaseService {
   }
 
   async getRecentContests(userId) {
-    const contests = await Contest.findAll({
+    await this.ensureModels()
+    const contests = await this.models.Contest.findAll({
       where: {
         contest_status: 'active'
       },
       include: [
         {
-          model: User,
+          model: this.models.User,
           as: 'author',
           attributes: ['id', 'first_name', 'last_name', 'email']
         },
         {
-          model: FavoriteContest,
+          model: this.models.FavoriteContest,
           as: 'favorites',
           where: { user_id: userId },
           required: false,
@@ -343,17 +365,18 @@ class ContestService extends BaseService {
   }
 
   async getContestById(contestId, userId) {
+    await this.ensureModels()
     logger.info('Запрос конкурса:', {
       contestId,
       userId: userId || 'anonymous'
     })
 
     try {
-      const contest = await Contest.findOne({
+      const contest = await this.models.Contest.findOne({
         where: { id: contestId },
         include: [
           {
-            model: User,
+            model: this.models.User,
             as: 'author',
             attributes: [
               'id', 
@@ -368,14 +391,14 @@ class ContestService extends BaseService {
             ]
           },
           {
-            model: ContestParticipation,
+            model: this.models.ContestParticipation,
             as: 'participations',
             where: userId ? { user_id: userId } : undefined,
             required: false,
             attributes: ['id', 'status', 'created_at']
           },
           {
-            model: ContestStats,
+            model: this.models.ContestStats,
             as: 'stats',
             attributes: [
               'views_count', 
@@ -415,7 +438,7 @@ class ContestService extends BaseService {
       // Проверяем, добавлен ли конкурс в избранное
       let isFavorite = false
       if (userId) {
-        const favorite = await FavoriteContest.findOne({
+        const favorite = await this.models.FavoriteContest.findOne({
           where: {
             contest_id: contestId,
             user_id: userId
@@ -545,7 +568,8 @@ class ContestService extends BaseService {
    * Проверяет, участвует ли пользователь в конкурсе
    */
   async hasUserParticipated(contestId, userId) {
-    const participation = await ContestParticipation.findOne({
+    await this.ensureModels()
+    const participation = await this.models.ContestParticipation.findOne({
       where: {
         contest_id: contestId,
         user_id: userId
@@ -558,11 +582,12 @@ class ContestService extends BaseService {
    * Добавляет участие пользователя в конкурсе
    */
   async participate(contestId, userId, conditions) {
+    await this.ensureModels()
     try {
       logger.debug('Добавление участия:', { contestId, userId, conditions })
       
       // Проверяем, не участвует ли уже пользователь
-      const existingParticipation = await ContestParticipation.findOne({
+      const existingParticipation = await this.models.ContestParticipation.findOne({
         where: {
           contest_id: contestId,
           user_id: userId
@@ -573,7 +598,7 @@ class ContestService extends BaseService {
         throw new Error('Вы уже участвуете в этом конкурсе')
       }
       
-      const participation = await ContestParticipation.create({
+      const participation = await this.models.ContestParticipation.create({
         contest_id: contestId,
         user_id: userId,
         ...conditions
@@ -597,20 +622,21 @@ class ContestService extends BaseService {
    * Добавляет/удаляет конкурс из избранного
    */
   async toggleFavorite(contestId, userId) {
+    await this.ensureModels()
     logger.info('Изменение статуса избранного:', { contestId, userId })
 
-    const transaction = await sequelize.transaction()
+    const transaction = await this.models.sequelize.transaction()
 
     try {
       // Получаем конкурс для контекста
-      const contest = await Contest.findByPk(contestId, { transaction })
+      const contest = await this.models.Contest.findByPk(contestId, { transaction })
       if (!contest) {
         logger.warn('Конкурс не найден:', { contestId })
         throw new Error('Конкурс не найден')
       }
 
       // Проверяем, добавлен ли конкурс в избранное
-      const favorite = await FavoriteContest.findOne({
+      const favorite = await this.models.FavoriteContest.findOne({
         where: { contest_id: contestId, user_id: userId },
         transaction
       })
@@ -619,7 +645,7 @@ class ContestService extends BaseService {
       let action = ''
 
       // Логируем текущее состояние избранного
-      const initialFavoritesCount = await FavoriteContest.count({
+      const initialFavoritesCount = await this.models.FavoriteContest.count({
         where: { contest_id: contestId },
         transaction
       })
@@ -635,7 +661,7 @@ class ContestService extends BaseService {
         isFavorite = false
       } else {
         // Добавляем конкурс в избранное
-        await FavoriteContest.create({
+        await this.models.FavoriteContest.create({
           contest_id: contestId,
           user_id: userId
         }, { transaction })
@@ -644,7 +670,7 @@ class ContestService extends BaseService {
       }
 
       // Получаем актуальное количество избранных
-      const currentFavoritesCount = await FavoriteContest.count({
+      const currentFavoritesCount = await this.models.FavoriteContest.count({
         where: { contest_id: contestId },
         transaction
       })
@@ -696,68 +722,24 @@ class ContestService extends BaseService {
    * @returns {Promise<Array>} Список избранных конкурсов
    */
   async getFavoriteContests(userId) {
-    if (!userId) {
-      throw new Error('ID пользователя не указан')
-    }
-
-    logger.info('Получение избранных конкурсов:', { userId })
-
-    try {
-      const contests = await Contest.findAll({
+    await this.ensureModels()
+    const favorites = await this.models.FavoriteContest.findAll({
+      where: { user_id: userId },
+      include: [{
+        model: this.models.Contest,
+        as: 'contest',
         include: [
-          {
-            model: User,
-            as: 'author',
-            attributes: ['id', 'first_name', 'last_name', 'email']
-          },
-          {
-            model: FavoriteContest,
-            as: 'favorites',
-            where: { user_id: userId },
-            required: true
-          },
-          {
-            model: ContestStats,
-            as: 'stats',
-            attributes: ['views_count', 'participants_count', 'favorites_count', 'rating']
-          }
-        ],
-        order: [['created_at', 'DESC']]
-      })
+          { model: this.models.User, as: 'author' },
+          { model: this.models.ContestStats, as: 'stats' }
+        ]
+      }]
+    })
 
-      const formattedContests = contests.map(contest => {
-        const formatted = this._formatContest(contest)
-        if (contest.stats) {
-          formatted.views_count = contest.stats.views_count
-          formatted.participants_count = contest.stats.participants_count
-          formatted.favorites_count = contest.stats.favorites_count
-          formatted.rating = contest.stats.rating
-        }
-        formatted.is_favorite = true
-        return formatted
-      })
-
-      logger.info('Получены избранные конкурсы:', { 
-        userId,
-        count: contests.length,
-        statuses: contests.map(c => c.contest_status),
-        platforms: contests.map(c => c.platform_type),
-        totalViews: contests.reduce((sum, c) => sum + (c.stats?.views_count || 0), 0),
-        totalParticipants: contests.reduce((sum, c) => sum + (c.stats?.participants_count || 0), 0)
-      })
-
-      return formattedContests
-    } catch (error) {
-      logger.error('Ошибка получения избранных конкурсов:', {
-        userId,
-        error: error.message,
-        stack: error.stack
-      })
-      throw error
-    }
+    return favorites.map(f => this._formatContest(f.contest))
   }
 
   async getContestsByAuthor(userId) {
+    await this.ensureModels()
     if (!userId) {
       throw new Error('ID автора не указан')
     }
@@ -765,16 +747,16 @@ class ContestService extends BaseService {
     logger.info('Получение конкурсов автора:', { userId })
 
     try {
-      const contests = await Contest.findAll({
+      const contests = await this.models.Contest.findAll({
         where: { user_id: userId },
         include: [
           {
-            model: User,
+            model: this.models.User,
             as: 'author',
             attributes: ['id', 'first_name', 'last_name', 'email']
           },
           {
-            model: ContestStats,
+            model: this.models.ContestStats,
             as: 'stats',
             attributes: ['views_count', 'participants_count', 'favorites_count', 'rating']
           }

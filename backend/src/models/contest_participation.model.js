@@ -1,5 +1,5 @@
 const { Model, DataTypes } = require('sequelize')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class ContestParticipation extends Model {
   static init(sequelize) {

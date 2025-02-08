@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const BaseService = require('./base.service')
 const { Op, Sequelize } = require('sequelize')
-const { logger } = require('../logging')
+const logger = require('../logging')
 const config = require('../config')
 const { ValidationError, ConflictError } = require('../utils/errors')
 
@@ -20,7 +20,6 @@ class UserService extends BaseService {
   init(models) {
     super.init(models)
     this.Contest = models.Contest
-    logger.info('UserService initialized with models')
   }
 
   /**

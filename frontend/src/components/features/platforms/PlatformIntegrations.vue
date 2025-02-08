@@ -271,9 +271,9 @@ export default {
           const activityResponse = await adminStore.getIntegrationActivity(timeRange.value)
           if (activityResponse?.success && activityResponse.data) {
             const chartData = []
-            const { byPlatform = {} } = activityResponse.data
+            const { byPlatform = [] } = activityResponse.data
 
-            if (!byPlatform || Object.keys(byPlatform).length === 0) {
+            if (!Array.isArray(byPlatform) || byPlatform.length === 0) {
               console.log('Нет данных для отображения на графике')
               if (activityChart.value?.chart) {
                 activityChart.value.chart.destroy()
@@ -282,14 +282,16 @@ export default {
               return
             }
 
-            // Для каждой платформы создаем точку данных
-            Object.entries(byPlatform).forEach(([platform, data]) => {
-              if (data?.actions && Array.isArray(data.actions)) {
-                data.actions.forEach(action => {
+            // Обрабатываем данные каждой платформы
+            byPlatform.forEach(({ platform, actions, total, lastActivity }) => {
+              if (platform && actions) {
+                // Преобразуем объект actions в массив точек данных
+                Object.entries(actions).forEach(([actionType, count]) => {
                   chartData.push({
                     platform,
-                    timestamp: action.timestamp,
-                    activity: parseInt(action.count) || 0
+                    actionType,
+                    count,
+                    timestamp: lastActivity
                   })
                 })
               }
@@ -381,49 +383,43 @@ export default {
       })
     }
 
-    const updateActivityChart = async (data) => {
+    const updateActivityChart = (data) => {
       try {
-        if (!activityChart.value) {
-          console.warn('Canvas элемент не найден')
-          return
-        }
+        const ctx = activityChart.value?.getContext('2d')
+        if (!ctx) return
 
-        const ctx = activityChart.value.getContext('2d')
-        if (!ctx) {
-          console.warn('Контекст canvas не найден')
-          return
-        }
-
-        // Очищаем предыдущий график
         if (activityChart.value.chart) {
           activityChart.value.chart.destroy()
         }
 
-        // Группируем данные по датам для каждой платформы
+        // Группируем данные по платформам и типам действий
         const groupedData = {}
         data.forEach(item => {
-          const date = new Date(item.timestamp).toLocaleDateString('ru-RU')
-          if (!groupedData[date]) {
-            groupedData[date] = {}
+          if (!groupedData[item.platform]) {
+            groupedData[item.platform] = {
+              total: 0,
+              actionTypes: {}
+            }
           }
-          if (!groupedData[date][item.platform]) {
-            groupedData[date][item.platform] = 0
+          groupedData[item.platform].total += item.count
+          if (!groupedData[item.platform].actionTypes[item.actionType]) {
+            groupedData[item.platform].actionTypes[item.actionType] = 0
           }
-          groupedData[date][item.platform] += item.activity
+          groupedData[item.platform].actionTypes[item.actionType] += item.count
         })
 
-        // Получаем уникальные платформы и даты
-        const platforms = [...new Set(data.map(item => item.platform))]
-        const sortedDates = Object.keys(groupedData).sort((a, b) => 
-          new Date(a) - new Date(b)
-        )
+        // Получаем уникальные платформы
+        const platforms = Object.keys(groupedData)
 
-        // Создаем наборы данных для каждой платформы
-        const datasets = platforms.map((platform, index) => {
+        // Создаем наборы данных: общая активность и по типам действий
+        const datasets = []
+
+        // Добавляем общую активность для каждой платформы
+        platforms.forEach((platform, index) => {
           const color = getChartColor(index)
-          return {
-            label: platform,
-            data: sortedDates.map(date => groupedData[date][platform] || 0),
+          datasets.push({
+            label: `${platform} (всего)`,
+            data: [groupedData[platform].total],
             borderColor: color,
             backgroundColor: color + '20',
             borderWidth: 2,
@@ -431,14 +427,30 @@ export default {
             pointHoverRadius: 6,
             fill: true,
             tension: 0.4
-          }
+          })
+
+          // Добавляем данные по типам действий
+          Object.entries(groupedData[platform].actionTypes).forEach(([actionType, count], actionIndex) => {
+            const actionColor = getChartColor(platforms.length + actionIndex)
+            datasets.push({
+              label: `${platform} (${actionType})`,
+              data: [count],
+              borderColor: actionColor,
+              backgroundColor: actionColor + '20',
+              borderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              fill: true,
+              tension: 0.4
+            })
+          })
         })
 
         // Создаем новый график
         activityChart.value.chart = new Chart(ctx, {
-          type: 'line',
+          type: 'bar',
           data: {
-            labels: sortedDates.map(date => formatChartDate(date)),
+            labels: ['Текущий период'],
             datasets
           },
           options: {
@@ -462,10 +474,6 @@ export default {
               x: {
                 grid: {
                   color: 'rgba(0, 0, 0, 0.1)'
-                },
-                ticks: {
-                  maxRotation: 45,
-                  minRotation: 45
                 }
               }
             },
@@ -482,7 +490,6 @@ export default {
                 mode: 'index',
                 intersect: false,
                 callbacks: {
-                  title: (tooltipItems) => formatChartDate(tooltipItems[0].label),
                   label: (context) => {
                     return `${context.dataset.label}: ${context.raw} действий`
                   }
@@ -496,13 +503,6 @@ export default {
       } catch (error) {
         console.error('Ошибка при обновлении графика:', error)
       }
-    }
-
-    const formatChartDate = (date) => {
-      return new Date(date).toLocaleDateString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit'
-      })
     }
 
     const getChartColor = (index) => {

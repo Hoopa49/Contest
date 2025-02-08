@@ -1,6 +1,6 @@
 const userService = require('../services/user.service')
 const jwtService = require('../services/jwt.service')
-const { logger } = require('../logging')
+const logger = require('../logging')
 const BaseController = require('./base.controller')
 const { ValidationError } = require('../utils/errors')
 const config = require('../config')

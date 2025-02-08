@@ -3,9 +3,26 @@
  */
 const { getCurrentUser } = require('./auth-context');
 const winston = require('winston');
-const format = winston.format
+const format = winston.format;
 const { LOG_TYPES, config } = require('./config');
 const path = require('path');
+
+// Базовые форматы логов
+const formats = {
+  console: winston.format.combine(
+    winston.format.colorize(),
+    winston.format.timestamp(),
+    winston.format.printf(({ timestamp, level, message, ...meta }) => {
+      return `[${timestamp}] [${level}] ${message} ${
+        Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ''
+      }`
+    })
+  ),
+  file: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  )
+};
 
 // Константы с шаблонами логов
 const LOG_TEMPLATES = {
@@ -447,5 +464,6 @@ module.exports = {
   userFormatter,
   metadataFormatter,
   callerFormatter,
-  ipFormatter
+  ipFormatter,
+  formats
 }; 

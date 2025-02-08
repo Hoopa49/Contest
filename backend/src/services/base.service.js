@@ -4,7 +4,7 @@
  */
 
 const { NotFoundError } = require('../utils/errors')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class BaseService {
   constructor(modelName) {
@@ -18,7 +18,6 @@ class BaseService {
     }
     this.model = models[this.modelName]
     this.models = models
-    logger.info(`Service initialized with model: ${this.modelName}`)
   }
 
   /**

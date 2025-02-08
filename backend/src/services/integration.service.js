@@ -1,5 +1,5 @@
 const { Op } = require('sequelize')
-const { logger } = require('../logging')
+const logger = require('../logging')
 const BaseService = require('./base.service')
 
 class IntegrationService extends BaseService {
@@ -206,136 +206,160 @@ class IntegrationService extends BaseService {
   }
 
   async getActivity(timeRange = 'week') {
-    logger.info('Начало получения активности интеграций:', { timeRange })
-
     try {
-      // Проверяем инициализацию моделей
-      if (!this.serviceModels) {
-        logger.error('Модели не инициализированы')
-        return {
-          byPlatform: {},
-          userActions: {}
-        }
-      }
-
-      // Проверяем наличие конкретных моделей
-      const IntegrationActivity = this.serviceModels.activities
-      const User = this.serviceModels.users
-
-      if (!IntegrationActivity || !User) {
-        logger.error('Модели не найдены:', {
-          hasActivity: !!IntegrationActivity,
-          hasUser: !!User,
-          availableModels: Object.keys(this.serviceModels)
-        })
-        return {
-          byPlatform: {},
-          userActions: {}
-        }
-      }
-
       // Определяем временной диапазон
-      const ranges = {
-        day: 24 * 60 * 60 * 1000,
-        week: 7 * 24 * 60 * 60 * 1000,
-        month: 30 * 24 * 60 * 60 * 1000
+      const now = new Date()
+      let startDate = new Date()
+      
+      switch (timeRange) {
+        case 'day':
+          startDate.setDate(startDate.getDate() - 1)
+          break
+        case 'week':
+          startDate.setDate(startDate.getDate() - 7)
+          break
+        case 'month':
+          startDate.setMonth(startDate.getMonth() - 1)
+          break
+        default:
+          startDate.setDate(startDate.getDate() - 7) // По умолчанию неделя
       }
 
-      const startDate = new Date(Date.now() - (ranges[timeRange] || ranges.week))
-
-      // Получаем активность
-      const activities = await IntegrationActivity.findAll({
+      // Получаем активность за период
+      const activities = await this.serviceModels.activities.findAll({
         where: {
           created_at: {
-            [Op.gte]: startDate
+            [Op.between]: [startDate, now]
           }
         },
         include: [{
-          model: User,
+          model: this.serviceModels.users,
           as: 'user',
           attributes: ['id', 'username', 'email']
         }],
         order: [['created_at', 'DESC']]
       })
 
-      logger.info('Получены записи активности:', { count: activities.length })
+      // Группируем активность по платформам
+      const platformActivity = {}
+      const userActions = new Set()
 
-      if (!activities || activities.length === 0) {
-        logger.info('Активность не найдена')
-        return {
-          byPlatform: {},
-          userActions: {}
-        }
-      }
-
-      // Группируем по платформам
-      const byPlatform = {}
-      const userActions = {}
-
-      // Обрабатываем каждую активность
-      activities.forEach(activity => {
-        const { platform, action_type, created_at, user } = activity.get({ plain: true })
-        const timestamp = new Date(created_at).toISOString()
-
-        // Группируем по платформам
-        if (!byPlatform[platform]) {
-          byPlatform[platform] = {
-            actions: []
+      for (const activity of activities) {
+        try {
+          // Проверяем наличие даты
+          if (!activity.created_at) {
+            logger.warn('Отсутствует дата в активности:', {
+              platform: activity.platform,
+              action_type: activity.action_type,
+              id: activity.id
+            })
+            continue
           }
-        }
 
-        // Находим или создаем запись для текущей даты
-        const existingAction = byPlatform[platform].actions.find(
-          a => new Date(a.timestamp).toDateString() === new Date(timestamp).toDateString()
-        )
-
-        if (existingAction) {
-          existingAction.count++
-        } else {
-          byPlatform[platform].actions.push({
-            timestamp,
-            count: 1
-          })
-        }
-
-        // Группируем действия пользователей
-        if (user) {
-          const userId = user.id
-          if (!userActions[userId]) {
-            userActions[userId] = {
-              user: {
-                id: user.id,
-                username: user.username,
-                email: user.email
-              },
-              actions: []
+          // Преобразуем строку в объект Date, если это строка
+          let activityDate = activity.created_at
+          if (typeof activityDate === 'string') {
+            try {
+              activityDate = new Date(activityDate)
+            } catch (error) {
+              logger.warn('Ошибка преобразования даты:', {
+                platform: activity.platform,
+                action_type: activity.action_type,
+                created_at: activity.created_at,
+                error: error.message
+              })
+              continue
             }
           }
 
-          userActions[userId].actions.push({
-            platform,
-            action_type,
-            timestamp
+          // Проверяем валидность даты
+          if (!(activityDate instanceof Date) || isNaN(activityDate.getTime())) {
+            logger.warn('Неверный формат даты в активности:', {
+              platform: activity.platform,
+              action_type: activity.action_type,
+              created_at: activity.created_at,
+              id: activity.id
+            })
+            continue
+          }
+
+          // Проверяем, что дата не в будущем
+          const currentDate = new Date()
+          if (activityDate > currentDate) {
+            logger.warn('Дата активности в будущем:', {
+              platform: activity.platform,
+              action_type: activity.action_type,
+              created_at: activityDate.toISOString(),
+              current_date: currentDate.toISOString(),
+              id: activity.id
+            })
+            
+            // Исправляем дату, если она в будущем
+            activityDate = currentDate
+            await activity.update({ created_at: currentDate })
+          }
+
+          const platform = activity.platform || 'unknown'
+          if (!platformActivity[platform]) {
+            platformActivity[platform] = {
+              total: 0,
+              actions: {},
+              lastActivity: null
+            }
+          }
+
+          // Увеличиваем счетчики
+          platformActivity[platform].total++
+          
+          const actionType = activity.action_type || 'unknown'
+          platformActivity[platform].actions[actionType] = (platformActivity[platform].actions[actionType] || 0) + 1
+
+          // Обновляем время последней активности
+          if (!platformActivity[platform].lastActivity || 
+              activityDate > platformActivity[platform].lastActivity) {
+            platformActivity[platform].lastActivity = activityDate
+          }
+
+          // Добавляем действие пользователя
+          if (activity.user_id) {
+            userActions.add(activity.user_id)
+          }
+        } catch (activityError) {
+          logger.error('Ошибка обработки активности:', {
+            error: activityError.message,
+            activity: {
+              id: activity.id,
+              platform: activity.platform,
+              action_type: activity.action_type
+            }
           })
+          continue
         }
-      })
-
-      // Сортируем действия по времени для каждой платформы
-      Object.values(byPlatform).forEach(platform => {
-        platform.actions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      })
-
-      logger.info('Данные активности сформированы:', { 
-        platforms: Object.keys(byPlatform),
-        userCount: Object.keys(userActions).length
-      })
-
-      return {
-        byPlatform,
-        userActions
       }
+
+      const result = {
+        byPlatform: Object.entries(platformActivity).map(([platform, data]) => ({
+          platform,
+          total: data.total,
+          actions: data.actions,
+          lastActivity: data.lastActivity ? data.lastActivity.toISOString() : null
+        })),
+        userCount: userActions.size,
+        timeRange,
+        period: {
+          start: startDate.toISOString(),
+          end: now.toISOString()
+        }
+      }
+
+      logger.info('Данные активности сформированы:', {
+        platforms: result.byPlatform.length,
+        userCount: result.userCount
+      })
+
+      return result
     } catch (error) {
-      logger.error('Ошибка получения активности:', { 
+      logger.error('Ошибка при получении активности:', {
         error: error.message,
         stack: error.stack,
         timeRange

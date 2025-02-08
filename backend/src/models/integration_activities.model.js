@@ -1,5 +1,5 @@
 const { Model, DataTypes } = require('sequelize')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class IntegrationActivity extends Model {
   static init(sequelize) {
@@ -33,6 +33,32 @@ class IntegrationActivity extends Model {
         type: DataTypes.ENUM('success', 'error', 'pending'),
         allowNull: false,
         defaultValue: 'pending'
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+        validate: {
+          isDate: true,
+          isNotFuture(value) {
+            if (value > new Date()) {
+              throw new Error('Дата не может быть в будущем');
+            }
+          }
+        }
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+        validate: {
+          isDate: true,
+          isNotFuture(value) {
+            if (value > new Date()) {
+              throw new Error('Дата не может быть в будущем');
+            }
+          }
+        }
       }
     }, {
       sequelize,

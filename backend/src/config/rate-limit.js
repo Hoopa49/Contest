@@ -3,98 +3,51 @@
  * Настройки ограничения количества запросов к API
  */
 
-const rateLimit = require('express-rate-limit')
-const { RedisStore } = require('rate-limit-redis')
-const redisClient = require('./redis')
-const { logger } = require('../logging')
+const RedisStore = require('rate-limit-redis')
+const redisWrapper = require('./redis')
+const logger = require('../logging/logger')
 
-// Функция создания уникального Redis store для каждого лимитера
-const createRedisStore = (prefix) => {
-  return new RedisStore({
-    sendCommand: (...args) => redisClient.sendCommand(args),
-    prefix: `rl:${prefix}:`, // уникальный префикс для каждого лимитера
-    resetExpiryOnChange: true
-  })
-}
-
-// Базовые настройки для всех лимитеров (без store)
 const baseOptions = {
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 100, // Лимит запросов
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    logger.warn('Превышен лимит запросов', {
-      metadata: {
-        ip: req.ip,
-        method: req.method,
-        url: req.originalUrl,
-        user: req.user?.id || 'anonymous',
-        headers: {
-          'user-agent': req.get('user-agent'),
-          'x-forwarded-for': req.get('x-forwarded-for')
-        }
-      }
+    logger.warn('Rate limit exceeded', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method
     })
-    
     res.status(429).json({
-      success: false,
-      message: 'Слишком много запросов. Пожалуйста, попробуйте позже.',
-      retryAfter: res.getHeader('Retry-After')
+      error: 'Too many requests, please try again later.'
     })
+  },
+  skip: (req) => {
+    // Пропускаем health check запросы
+    return req.path === '/health'
   }
 }
 
-// Базовый лимитер для всех запросов
-const basicLimiter = rateLimit({
-  ...baseOptions,
-  store: createRedisStore('basic'),
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  message: {
-    status: 429,
-    message: 'Слишком много запросов. Пожалуйста, подождите 15 минут.'
+const createRateLimiter = async () => {
+  try {
+    const client = await redisWrapper.getClient()
+    
+    if (!client) {
+      throw new Error('Redis client not available')
+    }
+
+    return {
+      store: new RedisStore({
+        sendCommand: (...args) => client.call(...args),
+        prefix: 'rl:' // Префикс для ключей rate limit
+      }),
+      ...baseOptions
+    }
+  } catch (error) {
+    logger.error('Failed to create rate limiter', { error })
+    // Возвращаем конфигурацию без Redis store в случае ошибки
+    return baseOptions
   }
-})
+}
 
-// Строгий лимитер для аутентификации
-const authLimiter = rateLimit({
-  ...baseOptions,
-  store: createRedisStore('auth'),
-  windowMs: 60 * 60 * 1000,
-  max: 100,
-  message: {
-    status: 429,
-    message: 'Слишком много попыток входа. Пожалуйста, подождите 1 час.'
-  },
-  skipSuccessfulRequests: true
-})
-
-// Лимитер для API endpoints
-const apiLimiter = rateLimit({
-  ...baseOptions,
-  store: createRedisStore('api'),
-  windowMs: 60 * 1000,
-  max: 100,
-  message: {
-    status: 429,
-    message: 'Превышен лимит запросов к API. Пожалуйста, подождите 1 минуту.'
-  }
-})
-
-// Строгий лимитер для критических операций
-const criticalLimiter = rateLimit({
-  ...baseOptions,
-  store: createRedisStore('critical'),
-  windowMs: 60 * 60 * 1000,
-  max: 50,
-  message: {
-    status: 429,
-    message: 'Превышен лимит для критических операций. Пожалуйста, подождите 1 час.'
-  }
-})
-
-module.exports = {
-  basicLimiter,
-  authLimiter,
-  apiLimiter,
-  criticalLimiter
-} 
+module.exports = { createRateLimiter } 

@@ -2,5 +2,9 @@ node_modules/
 .env
 coverage/
 .DS_Store
-.logs/
-src/database/seeders/logs/*
+# Игнорируем все файлы логов
+logs/
+logs/**/*
+*.log
+src/database/seeders/logs/
+src/database/seeders/logs/**/*
