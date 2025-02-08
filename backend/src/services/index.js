@@ -3,7 +3,7 @@
  * Инициализация и экспорт всех сервисов приложения
  */
 
-const { logger } = require('../logging')
+const logger = require('../logging')
 const userService = require('./user.service')
 const integrationService = require('./integration.service')
 const notificationService = require('./notification.service')
@@ -32,21 +32,15 @@ const init = async (models) => {
   }
 
   try {
-    logger.info('Initializing services...')
 
     // Инициализируем каждый сервис
     for (const [name, service] of Object.entries(services)) {
       if (service && typeof service.init === 'function') {
         await service.init(models)
-        logger.debug(`Service ${name} initialized`)
       }
     }
 
     initialized = true
-    logger.info('Services initialized successfully:', {
-      serviceCount: Object.keys(services).length,
-      serviceNames: Object.keys(services)
-    })
 
     return services
   } catch (error) {

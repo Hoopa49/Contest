@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken')
 const { accessSecret, refreshSecret, accessExpiresIn, refreshExpiresIn } = require('../config/jwt')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class TokenService {
   constructor() {

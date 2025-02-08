@@ -3,7 +3,7 @@
  * Инициализация и экспорт всех контроллеров приложения
  */
 
-const { logger } = require('../logging')
+const logger = require('../logging')
 const authController = require('./auth.controller')
 const userController = require('./user.controller')
 const contestController = require('./contest.controller')

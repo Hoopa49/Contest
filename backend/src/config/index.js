@@ -8,9 +8,11 @@ const cors = require('cors');
 const corsOptions = require('./cors');
 
 module.exports = {
-  env: process.env.NODE_ENV || 'development',
-  port: process.env.PORT || 3000,
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  app: {
+    env: process.env.NODE_ENV || 'development',
+    port: process.env.PORT || 3000,
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  },
   
   database: {
     name: process.env.DB_NAME || 'contest_db',

@@ -3,7 +3,7 @@
  */
 
 const BaseService = require('./base.service')
-const { logger } = require('../logging')
+const logger = require('../logging')
 const { ValidationError } = require('../utils/errors')
 const bcrypt = require('bcryptjs')
 
@@ -19,7 +19,6 @@ class SettingsService extends BaseService {
   async init(models) {
     super.init(models)
     await this.initializeDefaultSettings()
-    logger.info('SettingsService initialized')
   }
 
   /**
@@ -81,7 +80,7 @@ class SettingsService extends BaseService {
             integrations: {
               youtube: {
                 enabled: true,
-                api_key: process.env.YOUTUBE_API_KEY || '',
+                api_key: process.env.YOUTUBE_API_KEY || null,
                 quota_limit: 10000,
                 search_interval: 30
               },

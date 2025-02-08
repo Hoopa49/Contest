@@ -5,7 +5,7 @@
 
 require('dotenv').config()
 const { Sequelize } = require('sequelize')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 const config = {
   database: process.env.POSTGRES_DB || 'contest_db',

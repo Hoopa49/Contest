@@ -5,7 +5,7 @@
 
 const jwt = require('jsonwebtoken')
 const jwtConfig = require('../config/jwt')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class JWTService {
   /**

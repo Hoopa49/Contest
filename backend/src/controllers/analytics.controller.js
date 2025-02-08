@@ -4,7 +4,7 @@
 
 const analyticsService = require('../services/analytics.service')
 const { ValidationError } = require('../utils/errors')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class AnalyticsController {
   /**
@@ -12,14 +12,22 @@ class AnalyticsController {
    */
   async saveAnalytics(req, res, next) {
     try {
-      const { data } = req.body
+      const { date, category, metrics, dimensions, metadata } = req.body
       const userId = req.user.id
 
-      if (!data) {
-        throw new ValidationError('Data is required')
+      if (!date || !category || !metrics || !dimensions) {
+        throw new ValidationError('Required fields are missing')
       }
 
-      const result = await analyticsService.saveAnalytics(data, userId)
+      const result = await analyticsService.saveAnalytics({
+        date,
+        category,
+        metrics,
+        dimensions,
+        metadata,
+        updated_by: userId
+      })
+      
       res.json({ success: true, data: result })
     } catch (error) {
       logger.error('Error saving analytics:', error)

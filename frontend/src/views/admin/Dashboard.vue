@@ -173,7 +173,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { Chart, registerables } from 'chart.js'
@@ -221,81 +221,93 @@ export default {
 
     // Данные из хранилища
     const systemStats = computed(() => adminStore.getSystemStats || {})
-    const recentActions = computed(() => adminStore.getRecentActions || [])
-    const analyticsData = computed(() => analyticsStore.getAnalyticsData || {})
+    const recentActions = computed(() => adminStore.getRecentActions())
+    const analyticsData = computed(() => analyticsStore.getAnalyticsData())
 
     // Комбинированная статистика
-    const combinedStats = computed(() => [
-      {
-        title: 'Всего пользователей',
-        value: systemStats.value?.totalUsers || 0,
-        icon: 'mdi-account-group',
-        color: 'primary',
-        trend: analyticsData.value?.usersTrend
-      },
-      {
-        title: 'Активные конкурсы',
-        value: systemStats.value?.activeContests || 0,
-        icon: 'mdi-trophy',
-        color: 'success',
-        trend: analyticsData.value?.contestsTrend
-      },
-      {
-        title: 'Конверсия',
-        value: analyticsData.value?.conversion || '0%',
-        icon: 'mdi-chart-arc',
-        color: 'info',
-        trend: analyticsData.value?.conversionTrend
-      },
-      {
-        title: 'API запросы/час',
-        value: systemStats.value?.apiRequestsPerHour || 0,
-        icon: 'mdi-api',
-        color: 'warning',
-        trend: analyticsData.value?.apiTrend
-      }
-    ])
+    const combinedStats = computed(() => {
+      // Проверяем наличие данных аналитики
+      const analytics = analyticsData.value || {}
+      
+      return [
+        {
+          title: 'Всего пользователей',
+          value: systemStats.value?.data?.totalUsers || 0,
+          icon: 'mdi-account-group',
+          color: 'primary',
+          trend: typeof analytics.usersTrend === 'number' ? analytics.usersTrend : 0
+        },
+        {
+          title: 'Активные конкурсы',
+          value: systemStats.value?.data?.activeContests || 0,
+          icon: 'mdi-trophy',
+          color: 'success',
+          trend: typeof analytics.contestsTrend === 'number' ? analytics.contestsTrend : 0
+        },
+        {
+          title: 'Активные пользователи',
+          value: analytics?.metrics?.data?.[0]?.metrics?.active || 0,
+          icon: 'mdi-account-check',
+          color: 'info',
+          trend: typeof analytics.activeUsersTrend === 'number' ? analytics.activeUsersTrend : 0
+        },
+        {
+          title: 'Конверсия',
+          value: analytics?.metrics?.data?.[0]?.metrics?.active && analytics?.metrics?.data?.[0]?.metrics?.total
+            ? Math.round((analytics.metrics.data[0].metrics.active / analytics.metrics.data[0].metrics.total) * 100) + '%'
+            : '0%',
+          icon: 'mdi-chart-arc',
+          color: 'warning',
+          trend: typeof analytics.conversionTrend === 'number' ? analytics.conversionTrend : 0
+        }
+      ]
+    })
 
     // Заголовки таблицы
     const headers = [
-      { title: 'Дата', key: 'date', sortable: true },
-      { title: 'Метрика', key: 'metric', sortable: true },
-      { title: 'Значение', key: 'value', sortable: true },
-      { title: 'Изменение', key: 'trend', sortable: true }
+      { title: 'Дата', key: 'date', align: 'start' },
+      { title: 'Метрика', key: 'metric' },
+      { title: 'Значение', key: 'value' },
+      { title: 'Тренд', key: 'trend' }
     ]
 
     // Данные таблицы
     const tableData = ref([])
 
-    // Форматированные действия
+    // Форматирование описания действия
     const formatActionDescription = (action) => {
-      if (!action || !action.user) {
-        return 'Неизвестное действие'
+      const descriptions = {
+        'user_login': `Пользователь ${action.user?.username || 'Unknown'} вошел в систему`,
+        'user_register': `Новая регистрация: ${action.user?.username || 'Unknown'}`,
+        'contest_create': `Создан новый конкурс: ${action.contest?.title || 'Unknown'}`,
+        'contest_update': `Обновлен конкурс: ${action.contest?.title || 'Unknown'}`,
+        'submission_create': `Новое решение от ${action.user?.username || 'Unknown'}`
       }
-      const userName = action.user ? `${action.user.first_name} ${action.user.last_name}` : 'Пользователь'
-      return `${userName} ${action.action}`
+      return descriptions[action.type] || 'Неизвестное действие'
     }
 
-    // Получение иконки для типа действия
-    const getActionIcon = (type) => {
-      const icons = {
-        'user_action': 'mdi-account',
-        'api_request': 'mdi-api',
-        'error': 'mdi-alert',
-        'system': 'mdi-cog'
-      }
-      return icons[type] || 'mdi-information'
-    }
-
-    // Получение цвета для типа действия
+    // Получение цвета иконки действия
     const getActionColor = (type) => {
       const colors = {
-        'user_action': 'primary',
-        'api_request': 'info',
-        'error': 'error',
-        'system': 'warning'
+        'user_login': 'primary',
+        'user_register': 'success',
+        'contest_create': 'info',
+        'contest_update': 'warning',
+        'submission_create': 'error'
       }
       return colors[type] || 'grey'
+    }
+
+    // Получение иконки действия
+    const getActionIcon = (type) => {
+      const icons = {
+        'user_login': 'mdi-login',
+        'user_register': 'mdi-account-plus',
+        'contest_create': 'mdi-trophy-outline',
+        'contest_update': 'mdi-trophy',
+        'submission_create': 'mdi-file-upload'
+      }
+      return icons[type] || 'mdi-help-circle'
     }
 
     // Инициализация графиков
@@ -384,159 +396,236 @@ export default {
     // Обновление данных
     const updateData = async () => {
       try {
-        const period = {
-          start: new Date(Date.now() - getPeriodDuration(timeRange.value)),
-          end: new Date()
-        }
+        loading.value = true
         
+        // Определяем период
+        const now = new Date()
+        let startDate = new Date()
+        
+        switch (selectedPeriod.value) {
+          case 'day':
+            startDate.setDate(startDate.getDate() - 1)
+            break
+          case 'week':
+            startDate.setDate(startDate.getDate() - 7)
+            break
+          case 'month':
+            startDate.setMonth(startDate.getMonth() - 1)
+            break
+          case 'year':
+            startDate.setFullYear(startDate.getFullYear() - 1)
+            break
+        }
+
+        const period = {
+          start: startDate,
+          end: now
+        }
+
+        // Загружаем данные
         const data = await analyticsStore.fetchAnalytics({
           period,
           metric: selectedMetric.value
         })
 
-        // Обновляем графики с полученными данными
-        if (data.activity?.data) {
+        // Проверяем наличие данных перед обновлением графиков
+        if (data?.metrics?.data?.length) {
+          updateMetricsChart(data.metrics.data)
+          // Обновляем таблицу
+          tableData.value = formatTableData(data.metrics.data)
+        } else {
+          // Очищаем график метрик при отсутствии данных
+          if (metricsChartInstance) {
+            metricsChartInstance.destroy()
+            metricsChartInstance = null
+          }
+          tableData.value = []
+        }
+
+        if (data?.activity?.data?.length) {
           updateActivityChart(data.activity.data)
+        } else {
+          // Очищаем график активности при отсутствии данных
+          if (activityChartInstance) {
+            activityChartInstance.destroy()
+            activityChartInstance = null
+          }
         }
 
-        // Обновляем статистику
-        if (data.stats?.data) {
-          stats.value = [
-            {
-              title: 'Всего пользователей',
-              value: data.stats.data.totalUsers || 0,
-              icon: 'mdi-account-group',
-              color: 'primary'
-            },
-            {
-              title: 'Активные конкурсы',
-              value: data.stats.data.activeContests || 0,
-              icon: 'mdi-trophy',
-              color: 'success'
-            },
-            {
-              title: 'Новые регистрации',
-              value: data.stats.data.newRegistrations || 0,
-              icon: 'mdi-account-plus',
-              color: 'info'
-            },
-            {
-              title: 'API запросы/час',
-              value: data.stats.data.apiRequestsPerHour || 0,
-              icon: 'mdi-api',
-              color: 'warning'
-            }
-          ]
-        }
-
-        // Обновляем последние действия
-        if (data.activity?.data) {
-          formattedActions.value = data.activity.data.map(action => ({
-            ...action,
-            description: formatActionDescription(action)
-          }))
-        }
       } catch (error) {
         console.error('Error updating data:', error)
+        // Очищаем графики при ошибке
+        if (metricsChartInstance) {
+          metricsChartInstance.destroy()
+          metricsChartInstance = null
+        }
+        if (activityChartInstance) {
+          activityChartInstance.destroy()
+          activityChartInstance = null
+        }
+        tableData.value = []
+      } finally {
+        loading.value = false
       }
     }
 
-    // Получение длительности периода в миллисекундах
-    const getPeriodDuration = (period) => {
-      const durations = {
-        day: 24 * 60 * 60 * 1000,
-        week: 7 * 24 * 60 * 60 * 1000,
-        month: 30 * 24 * 60 * 60 * 1000
-      }
-      return durations[period] || durations.week
+    // Форматирование данных для таблицы
+    const formatTableData = (data) => {
+      return data.map(item => ({
+        date: formatDate(item.date),
+        metric: selectedMetric.value,
+        value: item.metrics.total || 0,
+        trend: item.metrics.trend || 0
+      }))
     }
 
-    // Обновление графика активности
-    const updateActivityChart = (activityData) => {
-      if (!activityChart.value) return
+    // Обновление графика метрик
+    const updateMetricsChart = (data) => {
+      if (!metricsChart.value) return
+
+      const ctx = metricsChart.value.getContext('2d')
       
-      const ctx = activityChart.value.getContext('2d')
-      if (!ctx) return
-      
-      if (activityChartInstance) {
-        activityChartInstance.destroy()
+      // Уничтожаем предыдущий экземпляр графика
+      if (metricsChartInstance) {
+        metricsChartInstance.destroy()
       }
 
-      // Группируем данные по часам
-      const groupedData = groupActivityByHours(activityData)
+      const labels = data.map(item => formatDate(item.date))
+      const values = data.map(item => item.metrics.total || 0)
+      const trends = data.map(item => item.metrics.trend || 0)
 
-      activityChartInstance = new Chart(ctx, {
-        type: 'line',
+      metricsChartInstance = new Chart(ctx, {
+        type: chartType.value,
         data: {
-          labels: Object.keys(groupedData),
-          datasets: [{
-            label: 'Активность',
-            data: Object.values(groupedData),
-            borderColor: 'rgb(75, 192, 192)',
-            tension: 0.1
-          }]
+          labels,
+          datasets: [
+            {
+              label: 'Значение',
+              data: values,
+              borderColor: '#1976D2',
+              backgroundColor: 'rgba(25, 118, 210, 0.2)',
+              tension: 0.4
+            },
+            {
+              label: 'Тренд',
+              data: trends,
+              borderColor: '#4CAF50',
+              backgroundColor: 'rgba(76, 175, 80, 0.2)',
+              tension: 0.4
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
             legend: {
-              position: 'top',
+              position: 'top'
             },
             title: {
               display: true,
-              text: 'График активности пользователей'
+              text: `Динамика ${selectedMetric.value}`
             }
           }
         }
       })
     }
 
-    // Группировка данных активности по часам
-    const groupActivityByHours = (activityData) => {
-      if (!Array.isArray(activityData)) {
-        console.warn('Activity data is not an array:', activityData)
-        return {}
+    // Обновление графика активности
+    const updateActivityChart = (data) => {
+      if (!activityChart.value) return
+
+      const ctx = activityChart.value.getContext('2d')
+      
+      // Уничтожаем предыдущий экземпляр графика
+      if (activityChartInstance) {
+        activityChartInstance.destroy()
       }
 
-      const grouped = {}
-      
-      activityData.forEach(action => {
-        const hour = new Date(action.created_at).getHours().toString().padStart(2, '0') + ':00'
-        grouped[hour] = (grouped[hour] || 0) + 1
-      })
+      const labels = data.map(item => formatDate(item.date))
+      const values = data.map(item => item.value || 0)
 
-      return grouped
+      activityChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Активность',
+              data: values,
+              borderColor: '#FF9800',
+              backgroundColor: 'rgba(255, 152, 0, 0.2)',
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top'
+            },
+            title: {
+              display: true,
+              text: 'Активность пользователей'
+            }
+          }
+        }
+      })
     }
 
     // Обновление последних действий
     const refreshActions = async () => {
       try {
         await adminStore.fetchRecentActions()
-        // Обновляем formattedActions после получения новых данных
-        formattedActions.value = recentActions.value?.map(action => ({
+        formattedActions.value = recentActions.value.map(action => ({
           ...action,
           description: formatActionDescription(action)
-        })) || []
+        }))
       } catch (error) {
-        console.error('Error fetching recent actions:', error)
+        console.error('Error refreshing actions:', error)
       }
     }
 
-    // Следим за изменением типа графика
+    // Обработчики изменений
     watch(chartType, () => {
-      initMetricsChart()
+      if (analyticsData.value?.metrics?.data) {
+        updateMetricsChart(analyticsData.value.metrics.data)
+      }
+    })
+
+    watch(timeRange, () => {
+      updateData()
     })
 
     // Инициализация при монтировании
-    onMounted(() => {
-      updateData()
-      refreshActions()
+    onMounted(async () => {
+      await Promise.all([
+        adminStore.fetchSystemStats(),
+        refreshActions()
+      ])
       
-      // Инициализируем графики
-      nextTick(() => {
-        initCharts()
-      })
+      await updateData()
+      
+      // Устанавливаем интервал обновления данных
+      const updateInterval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          updateData()
+          refreshActions()
+        }
+      }, 60000) // Обновление каждую минуту
+
+      // Очистка при размонтировании
+      return () => {
+        clearInterval(updateInterval)
+        if (activityChartInstance) {
+          activityChartInstance.destroy()
+        }
+        if (metricsChartInstance) {
+          metricsChartInstance.destroy()
+        }
+      }
     })
 
     return {

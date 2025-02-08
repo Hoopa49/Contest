@@ -5,7 +5,7 @@
 
 const express = require('express')
 const router = express.Router()
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 // Логирование ошибок с фронтенда
 router.post('/error', async (req, res) => {

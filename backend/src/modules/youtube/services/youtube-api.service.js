@@ -1,41 +1,93 @@
 const { google } = require('googleapis');
-const { youtube_settings: YoutubeSettings } = require('../../../models');
+const { initializeModels } = require('../../../models');
 const { logger } = require('../../../logging');
+const { ApiError } = require('../../../utils/errors');
 
 class YoutubeApiService {
-  constructor(settings) {
-    this.settings = settings;
+  constructor() {
+    this.settings = null;
     this.youtube = null;
     this.initialized = false;
+    this.initializationPromise = null;
+    this.models = null;
   }
 
   async initialize() {
-    try {
-      if (this.initialized) {
-        return;
-      }
-
-      const apiKey = process.env.YOUTUBE_API_KEY;
-      if (!apiKey) {
-        throw new Error('API ключ YouTube не настроен в переменных окружения');
-      }
-
-      this.youtube = google.youtube({
-        version: 'v3',
-        auth: apiKey
-      });
-
-      logger.info('YouTube API инициализирован:', { 
-        apiKey: apiKey.substring(0, 5) + '...' 
-      });
-
-      this.initialized = true;
-    } catch (error) {
-      logger.error('Ошибка инициализации YouTube API:', {
-        error: error.message
-      });
-      throw error;
+    if (this.initializationPromise) {
+      return this.initializationPromise;
     }
+
+    this.initializationPromise = (async () => {
+      try {
+        logger.info('Начало инициализации YouTube API сервиса');
+
+        // Инициализируем модели
+        this.models = await initializeModels();
+        
+        // Проверяем наличие необходимых моделей
+        const requiredModels = ['YoutubeSettings', 'YoutubeVideo', 'YoutubeChannel', 'YoutubeApiQuota'];
+        const missingModels = requiredModels.filter(model => !this.models[model]);
+        
+        if (missingModels.length > 0) {
+          logger.error('Отсутствуют необходимые модели:', {
+            context: {
+              missingModels,
+              availableModels: Object.keys(this.models)
+            }
+          });
+          throw new ApiError(
+            'Не все необходимые модели инициализированы',
+            500,
+            'MODELS_MISSING'
+          );
+        }
+
+        // Проверяем наличие API ключа
+        const apiKey = process.env.YOUTUBE_API_KEY;
+        if (!apiKey) {
+          throw new ApiError(
+            'API ключ YouTube не настроен в переменных окружения',
+            500,
+            'API_KEY_MISSING'
+          );
+        }
+
+        // Инициализируем клиент YouTube API
+        this.youtube = google.youtube({
+          version: 'v3',
+          auth: apiKey
+        });
+
+        // Загружаем настройки
+        await this.loadSettings();
+
+        this.initialized = true;
+        logger.info('YouTube API сервис успешно инициализирован', {
+          context: {
+            hasModels: !!this.models,
+            hasSettings: !!this.settings,
+            hasYoutubeClient: !!this.youtube,
+            availableModels: Object.keys(this.models)
+          }
+        });
+      } catch (error) {
+        this.initialized = false;
+        logger.error('Ошибка при инициализации YouTube API сервиса:', {
+          error: error?.message,
+          stack: error?.stack,
+          context: {
+            hasApiKey: !!process.env.YOUTUBE_API_KEY,
+            hasYoutubeClient: !!this.youtube,
+            hasSettings: !!this.settings,
+            hasModels: !!this.models,
+            modelsInitialized: this.models ? Object.keys(this.models).length : 0
+          }
+        });
+        throw error;
+      }
+    })();
+
+    return this.initializationPromise;
   }
 
   /**
@@ -43,10 +95,22 @@ class YoutubeApiService {
    */
   async loadSettings() {
     try {
-      this.settings = await YoutubeSettings.findOne();
+      logger.debug('Загрузка настроек YouTube API');
+      
+      if (!this.models || !this.models.YoutubeSettings) {
+        throw new ApiError(
+          'Модели не инициализированы',
+          500,
+          'MODELS_NOT_INITIALIZED'
+        );
+      }
+
+      this.settings = await this.models.YoutubeSettings.findOne();
       if (!this.settings) {
+        logger.info('Создание дефолтных настроек YouTube API');
+        
         // Создаем дефолтные настройки
-        this.settings = await YoutubeSettings.create({
+        this.settings = await this.models.YoutubeSettings.create({
           enabled: false,
           quota_limit: parseInt(process.env.YOUTUBE_QUOTA_LIMIT) || 10000,
           search_interval: parseInt(process.env.YOUTUBE_SEARCH_INTERVAL) || 30,
@@ -67,22 +131,28 @@ class YoutubeApiService {
         });
       }
       
-      const apiKey = process.env.YOUTUBE_API_KEY;
-      if (!apiKey) {
-        logger.error('API ключ YouTube не настроен в переменных окружения');
-        throw new Error('API ключ YouTube не настроен');
-      }
-      
-      logger.debug('Инициализация YouTube API с ключом:', apiKey.substring(0, 5) + '...');
-      this.youtube = google.youtube({
-        version: 'v3',
-        auth: apiKey
+      logger.debug('Настройки YouTube API загружены успешно', {
+        context: {
+          enabled: this.settings.enabled,
+          quotaLimit: this.settings.quota_limit
+        }
       });
-      
       return this.settings;
     } catch (error) {
-      logger.error('Ошибка при загрузке настроек YouTube API:', error);
-      throw error;
+      logger.error('Ошибка при загрузке настроек YouTube API:', {
+        error: error?.message,
+        stack: error?.stack,
+        context: {
+          hasModels: !!this.models,
+          modelExists: !!this.models?.YoutubeSettings
+        }
+      });
+      throw new ApiError(
+        'Ошибка загрузки настроек YouTube API',
+        500,
+        'SETTINGS_LOAD_ERROR',
+        error?.message
+      );
     }
   }
 
@@ -90,10 +160,47 @@ class YoutubeApiService {
    * Получение настроек
    */
   async getSettings() {
-    if (!this.settings) {
-      await this.loadSettings();
+    if (!this.initialized) {
+      throw new ApiError(
+        'YouTube API сервис не инициализирован',
+        503,
+        'SERVICE_NOT_INITIALIZED'
+      );
     }
     return this.settings;
+  }
+
+  /**
+   * Получение информации о квоте
+   */
+  async getQuotaInfo() {
+    if (!this.initialized) {
+      throw new ApiError(
+        'YouTube API сервис не инициализирован',
+        503,
+        'SERVICE_NOT_INITIALIZED'
+      );
+    }
+
+    try {
+      // Здесь должна быть логика получения информации о квоте
+      // Пока возвращаем заглушку
+      return {
+        used: 0,
+        lastSync: new Date()
+      };
+    } catch (error) {
+      logger.error('Ошибка при получении информации о квоте:', {
+        error: error?.message,
+        stack: error?.stack
+      });
+      throw new ApiError(
+        'Ошибка получения информации о квоте',
+        500,
+        'QUOTA_INFO_ERROR',
+        error?.message
+      );
+    }
   }
 
   /**
@@ -246,4 +353,6 @@ class YoutubeApiService {
   }
 }
 
-module.exports = new YoutubeApiService(); 
+// Создаем и экспортируем экземпляр сервиса
+const youtubeApiService = new YoutubeApiService();
+module.exports = youtubeApiService; 

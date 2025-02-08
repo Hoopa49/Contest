@@ -1,4 +1,4 @@
-const { logger } = require('../logging')
+const logger = require('../logging')
 const integrationService = require('../services/integration.service')
 const { initializeModels } = require('../models')
 
@@ -21,8 +21,6 @@ class IntegrationController {
       // Инициализируем сервис с моделями
       integrationService.init(models)
       this.initialized = true
-
-      logger.info('IntegrationController initialized successfully')
     } catch (error) {
       logger.error('Ошибка инициализации контроллера:', {
         error: error.message,
@@ -83,10 +81,27 @@ class IntegrationController {
 
       const activity = await integrationService.getActivity(timeRange)
       
+      if (!activity) {
+        logger.warn('Активность не найдена')
+        return res.json({
+          success: true,
+          data: {
+            byPlatform: [],
+            userCount: 0,
+            timeRange,
+            period: {
+              start: new Date().toISOString(),
+              end: new Date().toISOString()
+            }
+          }
+        })
+      }
+      
       logger.info('Получены данные активности:', {
         timeRange,
-        hasPlatforms: Object.keys(activity.byPlatform).length > 0,
-        hasUsers: Object.keys(activity.userActions).length > 0
+        platforms: activity.byPlatform?.length || 0,
+        userCount: activity.userCount || 0,
+        period: activity.period
       })
 
       return res.json({
@@ -98,8 +113,7 @@ class IntegrationController {
       logger.error('Error getting integration activity:', error)
       return res.status(500).json({
         success: false,
-        message: 'Ошибка при получении активности интеграций',
-        error: error.message || 'Неизвестная ошибка'
+        message: 'Ошибка при получении активности интеграций'
       })
     }
   }

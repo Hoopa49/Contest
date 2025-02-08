@@ -6,7 +6,7 @@
 const { Contest, User } = require('../models')
 const { Op } = require('sequelize')
 const BaseController = require('./base.controller')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class ContestController extends BaseController {
   /**

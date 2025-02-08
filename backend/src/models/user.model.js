@@ -5,7 +5,7 @@
 
 const { Model, DataTypes } = require('sequelize')
 const bcrypt = require('bcryptjs')
-const { logger } = require('../logging')
+const logger = require('../logging')
 
 class User extends Model {
   static init(sequelize) {

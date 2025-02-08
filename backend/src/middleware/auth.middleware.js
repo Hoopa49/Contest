@@ -5,8 +5,8 @@
 const jwt = require('jsonwebtoken')
 const { ValidationError } = require('../utils/errors')
 const config = require('../config')
+const logger = require('../logging')
 const { userService } = require('../services')
-const { logger } = require('../logging')
 const { LOG_MESSAGES } = require('../constants/logs')
 const { redisClient } = require('../config/redis')
 

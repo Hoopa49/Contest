@@ -1,5 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
+const logger = require('../logging');
 
 // Функция для обновления содержимого файла
 async function updateFile(filePath) {

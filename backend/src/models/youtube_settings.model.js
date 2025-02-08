@@ -4,18 +4,14 @@ class YoutubeSettings extends Model {
   static init(sequelize) {
     return super.init({
       id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
       },
       enabled: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false
-      },
-      api_key: {
-        type: DataTypes.STRING,
-        allowNull: true
       },
       quota_limit: {
         type: DataTypes.INTEGER,
@@ -25,12 +21,12 @@ class YoutubeSettings extends Model {
       search_interval: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 30 // минуты
+        defaultValue: 30
       },
       channel_check_interval: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 60 // минуты
+        defaultValue: 60
       },
       max_results: {
         type: DataTypes.INTEGER,
@@ -56,14 +52,6 @@ class YoutubeSettings extends Model {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 3
-      },
-      last_sync: {
-        type: DataTypes.DATE,
-        allowNull: true
-      },
-      next_sync: {
-        type: DataTypes.DATE,
-        allowNull: true
       },
       video_order: {
         type: DataTypes.STRING,
@@ -104,13 +92,28 @@ class YoutubeSettings extends Model {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 30
+      },
+      last_sync: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      next_sync: {
+        type: DataTypes.DATE,
+        allowNull: true
       }
     }, {
       sequelize,
+      modelName: 'YoutubeSettings',
       tableName: 'youtube_settings',
+      underscored: true,
       timestamps: true,
-      underscored: true
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
     });
+  }
+
+  static associate(models) {
+    // Здесь можно определить связи с другими моделями, если они нужны
   }
 }
 

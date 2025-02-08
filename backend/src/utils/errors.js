@@ -2,157 +2,108 @@
  * Утилиты для обработки ошибок
  */
 
-const { logger } = require('../logging');
+const logger = require('../logging');
 
 class ApiError extends Error {
-  constructor(statusCode, message) {
+  constructor(message, status = 500, code = 'INTERNAL_ERROR', details = null) {
     super(message);
     this.name = 'ApiError';
-    this.statusCode = statusCode;
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+
+  toJSON() {
+    return {
+      message: this.message,
+      code: this.code,
+      status: this.status,
+      details: process.env.NODE_ENV !== 'production' ? this.details : undefined
+    };
   }
 }
 
-class NotFoundError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'NotFoundError';
-    this.status = 404;
-  }
-}
-
-class ValidationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ValidationError';
-    this.status = 400;
-  }
-}
-
-class AuthenticationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'AuthenticationError';
-    this.status = 401;
-  }
-}
-
-class ForbiddenError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ForbiddenError';
-    this.status = 403;
-  }
-}
-
-class ConflictError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ConflictError';
-    this.status = 409;
-  }
-}
+// Предопределенные типы ошибок
+const ErrorTypes = {
+  NOT_FOUND: (message = 'Ресурс не найден', details = null) => 
+    new ApiError(message, 404, 'NOT_FOUND', details),
+    
+  VALIDATION: (message = 'Ошибка валидации', details = null) => 
+    new ApiError(message, 400, 'VALIDATION_ERROR', details),
+    
+  AUTH: (message = 'Ошибка аутентификации', details = null) => 
+    new ApiError(message, 401, 'AUTHENTICATION_ERROR', details),
+    
+  FORBIDDEN: (message = 'Доступ запрещен', details = null) => 
+    new ApiError(message, 403, 'FORBIDDEN', details),
+    
+  CONFLICT: (message = 'Конфликт данных', details = null) => 
+    new ApiError(message, 409, 'CONFLICT', details),
+    
+  DATABASE: (message = 'Ошибка базы данных', details = null) => 
+    new ApiError(message, 500, 'DATABASE_ERROR', details)
+};
 
 /**
  * Обертка для асинхронных обработчиков
- * @param {Function} fn Асинхронная функция для обработки
- * @returns {Function} Обработчик с перехватом ошибок
  */
-const catchAsync = fn => {
+const catchAsync = (fn) => {
   return async (req, res, next) => {
     try {
       await fn(req, res, next);
     } catch (error) {
-      // Логируем ошибку с контекстом запроса
-      logger.error('Необработанная ошибка', {
-        metadata: {
-          error: {
-            type: error.name,
-            message: error.message,
-            stack: error.stack
-          },
-          request: {
-            path: req.path,
-            method: req.method,
-            query: req.query,
-            params: req.params,
-            userId: req.user?.id
-          }
-        }
-      });
       next(error);
     }
   };
 };
 
+/**
+ * Единый обработчик ошибок для всего приложения
+ */
 const errorHandler = (err, req, res, next) => {
-  // Форматируем контекст ошибки для логирования
-  logger.error('Ошибка обработки запроса', {
+  // Логируем ошибку
+  logger.error('Ошибка обработки запроса:', {
     metadata: {
-      error: {
-        type: err.name,
-        message: err.message,
-        stack: err.name !== 'ValidationError' && 
-               err.name !== 'UnauthorizedError' && 
-               err.name !== 'ForbiddenError' ? err.stack : undefined
-      },
       request: {
-        path: req.path,
-        method: req.method,
-        query: req.query,
-        params: req.params,
-        userId: req.user?.id
+        method: req?.method,
+        url: req?.url,
+        query: req?.query,
+        params: req?.params,
+        body: process.env.NODE_ENV !== 'production' ? req?.body : undefined,
+        userId: req?.user?.id
+      },
+      error: {
+        name: err?.name,
+        message: err?.message,
+        code: err?.code,
+        status: err?.status,
+        stack: process.env.NODE_ENV !== 'production' ? err?.stack : undefined
       }
     }
   });
 
-  // Обрабатываем различные типы ошибок
-  switch (err.name) {
-    case 'ValidationError':
-      return res.status(400).json({
-        success: false,
-        message: 'Ошибка валидации',
-        errors: err.errors
-      });
-
-    case 'UnauthorizedError':
-      return res.status(401).json({
-        success: false,
-        message: 'Необходима авторизация'
-      });
-
-    case 'ForbiddenError':
-      return res.status(403).json({
-        success: false,
-        message: 'Доступ запрещен'
-      });
-
-    case 'NotFoundError':
-      return res.status(404).json({
-        success: false,
-        message: err.message || 'Ресурс не найден'
-      });
-
-    case 'ConflictError':
-      return res.status(409).json({
-        success: false,
-        message: err.message
-      });
-
-    default:
-      return res.status(500).json({
-        success: false,
-        message: 'Внутренняя ошибка сервера'
-      });
+  // Если заголовки уже отправлены
+  if (res.headersSent) {
+    return next(err);
   }
+
+  // Формируем ответ об ошибке
+  const error = err instanceof ApiError ? err : new ApiError(
+    err?.message || 'Внутренняя ошибка сервера',
+    err?.status || 500,
+    err?.code || 'INTERNAL_ERROR'
+  );
+
+  // Отправляем ответ
+  res.status(error.status).json({
+    success: false,
+    error: error.toJSON()
+  });
 };
 
 module.exports = {
   ApiError,
-  NotFoundError,
-  ValidationError,
-  AuthenticationError,
-  ForbiddenError,
-  ConflictError,
+  ErrorTypes,
   catchAsync,
   errorHandler
 }; 

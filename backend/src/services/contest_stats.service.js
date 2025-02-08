@@ -1,18 +1,30 @@
-const models = require('../models')
-const { logger } = require('../logging')
+const { initializeModels } = require('../models')
+const logger = require('../logging')
 
 class ContestStatsService {
+  constructor() {
+    this.models = null
+  }
+
+  async init() {
+    if (!this.models) {
+      this.models = await initializeModels()
+    }
+  }
+
   /**
    * Получение статистики конкурса
    */
   async getStats(contestId) {
     try {
-      let stats = await models.ContestStats.findOne({
+      await this.init()
+      
+      let stats = await this.models.ContestStats.findOne({
         where: { contest_id: contestId }
       })
 
       if (!stats) {
-        stats = await models.ContestStats.create({
+        stats = await this.models.ContestStats.create({
           contest_id: contestId,
           views_count: 0,
           participants_count: 0,
@@ -160,7 +172,7 @@ class ContestStatsService {
         change: rating - oldRating
       })
 
-      const contest = await models.Contest.findByPk(contestId)
+      const contest = await this.models.Contest.findByPk(contestId)
       if (contest) {
         await this.updateOrganizerRating(contest.user_id)
       }
@@ -198,7 +210,7 @@ class ContestStatsService {
   async updateOrganizerRating(userId) {
     try {
       // Получаем все конкурсы пользователя
-      const contests = await models.Contest.findAll({
+      const contests = await this.models.Contest.findAll({
         where: { user_id: userId }
       })
 
@@ -214,7 +226,7 @@ class ContestStatsService {
       const averageRating = totalRating / contests.length
 
       // Обновляем рейтинг организатора
-      await models.User.update(
+      await this.models.User.update(
         { organizer_rating: averageRating },
         { where: { id: userId } }
       )
@@ -234,7 +246,9 @@ class ContestStatsService {
 
   async updateContestStats(contestId) {
     try {
-      const contest = await models.Contest.findByPk(contestId)
+      await this.init()
+      
+      const contest = await this.models.Contest.findByPk(contestId)
 
       if (!contest) {
         logger.warn('Конкурс не найден:', { contestId })
@@ -243,78 +257,40 @@ class ContestStatsService {
 
       // Получаем текущую статистику
       const stats = await this.getStats(contestId)
-      logger.info('Текущая статистика:', {
-        contestId,
-        currentStats: {
-          favorites_count: stats.favorites_count,
-          participants_count: stats.participants_count,
-          rating: stats.rating,
-          views_count: stats.views_count
-        }
-      })
       
       // Получаем актуальное количество избранных
-      const favorites = await models.FavoriteContest.count({
+      const favorites = await this.models.FavoriteContest.count({
         where: { contest_id: contestId }
-      })
-      logger.info('Подсчитано количество записей в favorites:', {
-        contestId,
-        favoritesCount: favorites
       })
 
       // Получаем количество участников
-      const participants = await models.ContestParticipation.count({
+      const participants = await this.models.ContestParticipation.count({
         where: { contest_id: contestId }
-      })
-      logger.info('Подсчитано количество участников:', {
-        contestId,
-        participantsCount: participants
       })
 
       // Получаем средний рейтинг из отзывов
-      const reviews = await models.ContestReview.findAll({
+      const reviews = await this.models.ContestReview.findAll({
         where: { contest_id: contestId },
         attributes: [
-          [models.sequelize.fn('AVG', models.sequelize.col('rating')), 'avg_rating']
+          [this.models.sequelize.fn('AVG', this.models.sequelize.col('rating')), 'avg_rating']
         ]
       })
-      const rating = reviews[0]?.get('avg_rating') || 0
-      logger.info('Подсчитан средний рейтинг:', {
-        contestId,
-        rating
-      })
 
-      logger.info('Подсчитана статистика конкурса:', {
-        contestId,
-        favorites,
-        participants,
-        rating
-      })
-      
+      const avgRating = reviews[0]?.get('avg_rating') || 0
+
       // Обновляем статистику
-      const updateResult = await stats.update({
+      await stats.update({
         favorites_count: favorites,
         participants_count: participants,
-        rating: parseFloat(rating)
-      })
-      logger.info('Результат обновления:', {
-        contestId,
-        updateResult: {
-          favorites_count: updateResult.favorites_count,
-          participants_count: updateResult.participants_count,
-          rating: updateResult.rating
-        }
+        rating: avgRating
       })
 
-      // Проверяем, что обновление прошло успешно
-      const verifyStats = await this.getStats(contestId)
-      logger.info('Проверка обновленной статистики:', {
+      logger.info('Статистика конкурса обновлена:', {
         contestId,
-        verifyStats: {
-          favorites_count: verifyStats.favorites_count,
-          participants_count: verifyStats.participants_count,
-          rating: verifyStats.rating,
-          views_count: verifyStats.views_count
+        stats: {
+          favorites_count: favorites,
+          participants_count: participants,
+          rating: avgRating
         }
       })
 

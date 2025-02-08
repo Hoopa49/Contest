@@ -7,12 +7,16 @@ const router = express.Router()
 const { authMiddleware, adminMiddleware } = require('../middleware/auth.middleware')
 const AdminController = require('../controllers/admin.controller')
 const analyticsController = require('../controllers/analytics.controller')
+const youtubeRoutes = require('../modules/youtube/routes/youtube.routes')
 
 const adminController = new AdminController()
 
 // Все маршруты защищены authMiddleware и adminMiddleware
 router.use(authMiddleware)
 router.use(adminMiddleware)
+
+// Подключаем маршруты YouTube
+router.use('/integrations/youtube', youtubeRoutes)
 
 // Получение статистики системы
 router.get('/stats', adminController.getSystemStats.bind(adminController))
