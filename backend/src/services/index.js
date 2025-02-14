@@ -9,8 +9,8 @@ const integrationService = require('./integration.service')
 const notificationService = require('./notification.service')
 const contestService = require('../modules/contest/services/contest.service')
 const contestStatsService = require('./contest_stats.service')
-const settingsService = require('./settings.service')
 const analyticsService = require('./analytics.service')
+const systemSettingsService = require('./system_settings.service')
 
 // Объект с сервисами
 const services = {
@@ -19,8 +19,8 @@ const services = {
   notificationService,
   contestService,
   contestStatsService,
-  settingsService,
-  analyticsService
+  analyticsService,
+  systemSettingsService
 }
 
 let initialized = false
@@ -32,7 +32,6 @@ const init = async (models) => {
   }
 
   try {
-
     // Инициализируем каждый сервис
     for (const [name, service] of Object.entries(services)) {
       if (service && typeof service.init === 'function') {
@@ -41,7 +40,6 @@ const init = async (models) => {
     }
 
     initialized = true
-
     return services
   } catch (error) {
     logger.error('Error initializing services:', {

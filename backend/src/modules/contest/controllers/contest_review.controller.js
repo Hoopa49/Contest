@@ -101,6 +101,10 @@ class ContestReviewController {
       
       const contestId = await contestReviewService.deleteReview(reviewId, userId)
       
+      if (!contestId) {
+        throw new Error('Не удалось получить ID конкурса')
+      }
+      
       // Получаем обновленную статистику конкурса
       const stats = await contestStatsService.getStats(contestId)
 

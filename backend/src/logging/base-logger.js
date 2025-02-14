@@ -12,6 +12,12 @@ const {
 // Увеличиваем лимит слушателей для process
 process.setMaxListeners(20);
 
+// Функция для форматирования времени в московском часовом поясе
+const formatTimestamp = () => {
+  const date = new Date();
+  return new Date(date.getTime() + (3 * 60 * 60 * 1000)).toISOString().replace('Z', '+03:00');
+};
+
 class BaseLogger {
   constructor(type, options = {}) {
     this.type = type;
@@ -29,11 +35,18 @@ class BaseLogger {
     const env = process.env.NODE_ENV || 'development';
     const logDir = LOG_CONFIG[this.type].dir;
     const prefix = LOG_CONFIG[this.type].prefix;
+    const rootLogDir = path.join(process.cwd(), 'logs', 'backend');
+    const auditDir = path.join(rootLogDir, '.audit');
 
     // Создаем директорию для логов, если её нет
     try {
       if (!fs.existsSync(logDir)) {
         fs.mkdirSync(logDir, { recursive: true });
+      }
+      
+      // Создаем директорию для audit файлов
+      if (!fs.existsSync(auditDir)) {
+        fs.mkdirSync(auditDir, { recursive: true });
       }
     } catch (error) {
       throw error;
@@ -53,7 +66,9 @@ class BaseLogger {
     });
 
     const customFormat = winston.format.combine(
-      winston.format.timestamp(),
+      winston.format.timestamp({
+        format: formatTimestamp
+      }),
       winston.format.errors({ stack: true }),
       prettyJson
     );
@@ -71,7 +86,9 @@ class BaseLogger {
       handleRejections: true,
       zippedArchive: false,
       createSymlink: true,
-      symlinkName: `${prefix}-current.log`
+      symlinkName: `${prefix}-current.log`,
+      auditFile: path.join(rootLogDir, '.audit', `${prefix}-audit.json`),
+      auditFilePattern: path.join(rootLogDir, '.audit', `${prefix}-audit.json`)
     });
 
     // Добавляем обработчики событий для транспорта файлов
@@ -82,7 +99,9 @@ class BaseLogger {
     // Создаем транспорт для консоли с цветным форматированием
     const consoleFormat = winston.format.combine(
       winston.format.colorize(),
-      winston.format.timestamp(),
+      winston.format.timestamp({
+        format: formatTimestamp
+      }),
       winston.format.printf(({ level, message, timestamp, ...meta }) => {
         const metaStr = Object.keys(meta).length ? 
           '\n' + JSON.stringify(meta, null, 2) : '';

@@ -52,6 +52,21 @@ class UserService extends BaseService {
       throw new ValidationError('Пароль должен содержать минимум 6 символов')
     }
 
+    // Генерируем username из email если он не указан
+    if (!userData.username) {
+      userData.username = userData.email.split('@')[0]
+      
+      // Проверяем уникальность username
+      const existingUsername = await this.model.findOne({
+        where: { username: userData.username }
+      })
+
+      // Если username занят, добавляем случайное число
+      if (existingUsername) {
+        userData.username = `${userData.username}${Math.floor(Math.random() * 1000)}`
+      }
+    }
+
     // Хешируем пароль
     const password_hash = await bcrypt.hash(userData.password, 10)
 

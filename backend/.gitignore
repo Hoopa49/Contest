@@ -2,9 +2,21 @@ node_modules/
 .env
 coverage/
 .DS_Store
+
 # Игнорируем все файлы логов
 logs/
 logs/**/*
 *.log
+*-audit.json
+
+# Игнорируем директорию .audit
+logs/.audit/
+**/.audit/
+
+# Игнорируем логи в других директориях
+**/logs/
+**/*.log
+**/*-audit.json
+
 src/database/seeders/logs/
 src/database/seeders/logs/**/*

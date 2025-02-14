@@ -249,6 +249,25 @@ class MainLogger extends BaseLogger {
   debug(message, metadata = {}) {
     super.debug(message, { ...metadata, type: LOG_TYPES.SYSTEM });
   }
+
+  // Добавляем методы из system-logger
+  logSystemEvent(message, metadata = {}) {
+    this.info(message, {
+      ...metadata,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  logSystemError(error, metadata = {}) {
+    this.error('Системная ошибка', {
+      error: {
+        message: error.message,
+        stack: error.stack
+      },
+      ...metadata,
+      timestamp: new Date().toISOString()
+    });
+  }
 }
 
 // Создаем единственный экземпляр

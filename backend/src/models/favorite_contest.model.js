@@ -6,9 +6,9 @@ class FavoriteContest extends Model {
     return super.init(
       {
         id: {
-          type: DataTypes.UUID,
-          defaultValue: DataTypes.UUIDV4,
-          primaryKey: true
+          type: DataTypes.INTEGER,
+          primaryKey: true,
+          autoIncrement: true
         },
         contest_id: {
           type: DataTypes.UUID,
@@ -34,17 +34,17 @@ class FavoriteContest extends Model {
       {
         sequelize,
         modelName: 'FavoriteContest',
-        tableName: 'favorites',
+        tableName: 'favorite_contests',
         underscored: true,
         timestamps: true,
         indexes: [
           {
             unique: true,
             fields: ['contest_id', 'user_id'],
-            name: 'favorites_contest_user_unique'
+            name: 'favorite_contests_contest_user_unique'
           },
-          { fields: ['contest_id'], name: 'favorites_contest_id_idx' },
-          { fields: ['user_id'], name: 'favorites_user_id_idx' }
+          { fields: ['contest_id'], name: 'favorite_contests_contest_id_idx' },
+          { fields: ['user_id'], name: 'favorite_contests_user_id_idx' }
         ]
       }
     )

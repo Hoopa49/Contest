@@ -117,13 +117,6 @@ export const useContestsStore = defineStore('contests', {
               hasUserParticipated: response.data.has_user_participated
             }
             
-            console.debug('Fetched contest details:', {
-              contestId,
-              isFavorite: this.currentContest.is_favorite,
-              hasUserParticipated: this.currentContest.hasUserParticipated,
-              favoriteContests: Array.from(this.favoriteContests)
-            })
-            
             return this.currentContest
           }
           throw new Error('Не удалось загрузить данные конкурса')
@@ -136,8 +129,6 @@ export const useContestsStore = defineStore('contests', {
 
     async updateFilters(filters) {
       return withAsync(this, async () => {
-        console.debug('Updating filters:', filters)
-        
         // Обновляем состояние фильтров
         this.filters = {
           ...this.filters,
@@ -249,47 +240,15 @@ export const useContestsStore = defineStore('contests', {
       return withAsync(this, async () => {
         try {
           const response = await contestService.getFavoriteContests()
-          console.debug('Loading favorite contests response:', response)
-
-          if (response?.success) {
-            const favoriteContests = response.data || []
-            console.debug('Received favorite contests:', favoriteContests)
-
-            // Обновляем Set избранных конкурсов
-            this.favoriteContests = new Set(favoriteContests.map(contest => contest.id))
-
-            // Обновляем статус в текущем списке конкурсов
-            this.contests.forEach(contest => {
-              contest.is_favorite = this.favoriteContests.has(contest.id)
-            })
-
-            // Обновляем статус текущего конкурса, если он открыт
-            if (this.currentContest) {
-              this.currentContest.is_favorite = this.favoriteContests.has(this.currentContest.id)
-            }
-
-            console.debug('Updated favorite contests state:', {
-              totalFavorites: this.favoriteContests.size,
-              favoriteIds: Array.from(this.favoriteContests)
-            })
-            
-            return {
-              success: true,
-              data: favoriteContests
-            }
+          if (response?.data) {
+            this.favoriteContests = new Set(response.data.map(contest => contest.id))
+            return Array.from(this.favoriteContests)
           }
-          
-          return {
-            success: false,
-            error: 'Неверный формат ответа'
-          }
+          return []
         } catch (error) {
           console.error('Error loading favorite contests:', error)
           this.favoriteContests = new Set()
-          return {
-            success: false,
-            error: error.message
-          }
+          return []
         }
       })
     },
@@ -315,16 +274,9 @@ export const useContestsStore = defineStore('contests', {
       return withAsync(this, async () => {
         try {
           const response = await contestService.toggleFavorite(contestId)
-          console.debug('Store received response:', response)
           
           if (response?.success) {
             // Проверяем наличие данных
-            console.debug('Checking response data:', {
-              contestId,
-              responseData: response.data,
-              isFavorite: response.data?.isFavorite
-            })
-            
             const isFavorite = response.data?.isFavorite
             
             if (typeof isFavorite !== 'boolean') {
@@ -342,19 +294,11 @@ export const useContestsStore = defineStore('contests', {
             const contest = this.contests.find(c => c.id === contestId)
             if (contest) {
               contest.is_favorite = isFavorite
-              console.debug('Updated contest in list:', {
-                contestId,
-                newState: contest.is_favorite
-              })
             }
             
             // Обновляем состояние в текущем конкурсе, если он открыт
             if (this.currentContest?.id === contestId) {
               this.currentContest.is_favorite = isFavorite
-              console.debug('Updated current contest:', {
-                contestId,
-                newState: this.currentContest.is_favorite
-              })
             }
             
             return {
@@ -384,7 +328,6 @@ export const useContestsStore = defineStore('contests', {
       return withAsync(this, async () => {
         try {
           const response = await contestService.participate(contestId)
-          console.debug('Participation response:', response)
           
           if (!response?.success) {
             return {

@@ -9,7 +9,7 @@
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
-        "seed": "node src/database/seed.js",
+        "seed": "npx sequelize-cli db:seed:all",
         "clean-logs": "node src/scripts/clean-logs.js",
         "update-analytics": "node scripts/update-analytics.js"
     },

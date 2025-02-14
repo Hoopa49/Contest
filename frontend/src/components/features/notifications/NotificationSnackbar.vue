@@ -1,35 +1,21 @@
 <template>
   <v-snackbar
     v-model="show"
-    :color="notification.color"
+    :color="notification.type"
     :timeout="notification.timeout"
-    :location="notification.location"
-    class="notification-snackbar"
+    location="top"
   >
     <div class="d-flex align-center">
       <v-icon
-        v-if="notification.icon"
-        :icon="notification.icon"
+        v-if="getIcon(notification.type)"
+        :icon="getIcon(notification.type)"
         class="mr-2"
         size="20"
       ></v-icon>
       
       <div class="notification-content">
-        <div v-if="notification.title" class="text-subtitle-2 font-weight-bold">
-          {{ notification.title }}
-        </div>
-        <div>{{ notification.message }}</div>
+        {{ notification.message }}
       </div>
-
-      <v-btn
-        v-if="notification.action"
-        class="ml-4"
-        variant="text"
-        size="small"
-        @click="handleAction"
-      >
-        {{ notification.action.text }}
-      </v-btn>
     </div>
 
     <template v-slot:actions>
@@ -42,72 +28,64 @@
   </v-snackbar>
 </template>
 
-<script>
+<script setup>
 import { ref, watch } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 
-export default {
-  name: 'NotificationSnackbar',
-  
-  setup() {
-    const notificationStore = useNotificationStore()
-    const show = ref(false)
-    const notification = ref({
-      title: '',
-      message: '',
-      color: 'info',
-      timeout: 5000,
-      location: 'bottom',
-      icon: null,
-      action: null
-    })
+const notificationStore = useNotificationStore()
+const show = ref(false)
+const notification = ref({
+  type: 'info',
+  message: '',
+  timeout: 5000
+})
 
-    // Слушаем новые уведомления
-    watch(() => notificationStore.currentNotification, (newNotification) => {
-      if (newNotification) {
-        notification.value = {
-          ...notification.value,
-          ...newNotification
-        }
-        show.value = true
-      }
-    })
-
-    // Следим за закрытием уведомления
-    watch(show, (newValue) => {
-      if (!newValue) {
-        notificationStore.clearCurrentNotification()
-      }
-    })
-
-    const handleAction = () => {
-      if (notification.value.action && notification.value.action.handler) {
-        notification.value.action.handler()
-      }
-      show.value = false
+// Слушаем новые уведомления
+watch(() => notificationStore.items[0], (newNotification) => {
+  if (newNotification && !newNotification.read) {
+    notification.value = {
+      type: newNotification.type || 'info',
+      message: newNotification.message || '',
+      timeout: newNotification.timeout || 5000,
+      id: newNotification.id
     }
+    show.value = true
+  }
+})
 
-    const closeNotification = () => {
-      show.value = false
-    }
-
-    return {
-      show,
-      notification,
-      handleAction,
-      closeNotification
+// Следим за закрытием уведомления
+watch(show, (newValue) => {
+  if (!newValue && notification.value?.id) {
+    const index = notificationStore.items.findIndex(n => n.id === notification.value.id)
+    if (index !== -1) {
+      notificationStore.items[index].read = true
+      notificationStore.unreadCount = Math.max(0, notificationStore.unreadCount - 1)
     }
   }
+})
+
+const getIcon = (type) => {
+  switch (type) {
+    case 'success': return 'mdi-check-circle'
+    case 'error': return 'mdi-alert-circle'
+    case 'warning': return 'mdi-alert'
+    case 'info': return 'mdi-information'
+    default: return null
+  }
+}
+
+const closeNotification = () => {
+  show.value = false
 }
 </script>
 
 <style scoped>
-.notification-snackbar {
-  max-width: 400px;
-}
-
 .notification-content {
   flex: 1;
+}
+
+.v-snackbar {
+  max-width: 400px;
 }
 
 /* Анимации */

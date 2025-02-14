@@ -1,7 +1,9 @@
 const { google } = require('googleapis');
 const { initializeModels } = require('../../../models');
 const { logger } = require('../../../logging');
+const { apiLogger, apiErrorLogger, logApiRequest, logApiResponse, logApiError } = require('../../../logging/youtube-api.logger');
 const { ApiError } = require('../../../utils/errors');
+const { quotaService } = require('./youtube-quota.service');
 
 class YoutubeApiService {
   constructor() {
@@ -19,7 +21,9 @@ class YoutubeApiService {
 
     this.initializationPromise = (async () => {
       try {
-        logger.info('Начало инициализации YouTube API сервиса');
+        logApiRequest('INITIALIZE', {
+          timestamp: new Date().toISOString()
+        });
 
         // Инициализируем модели
         this.models = await initializeModels();
@@ -29,17 +33,9 @@ class YoutubeApiService {
         const missingModels = requiredModels.filter(model => !this.models[model]);
         
         if (missingModels.length > 0) {
-          logger.error('Отсутствуют необходимые модели:', {
-            context: {
-              missingModels,
-              availableModels: Object.keys(this.models)
-            }
-          });
-          throw new ApiError(
-            'Не все необходимые модели инициализированы',
-            500,
-            'MODELS_MISSING'
-          );
+          const error = new Error('Отсутствуют необходимые модели');
+          logApiError('INITIALIZE_ERROR', error, { missingModels });
+          throw error;
         }
 
         // Проверяем наличие API ключа
@@ -220,15 +216,22 @@ class YoutubeApiService {
    */
   async searchVideos(params) {
     try {
-      const response = await this.youtube.search.list({
+      // Регистрируем использование квоты для поиска (100 токенов)
+      await quotaService.registerQuotaUsage('SEARCH', 1);
+
+      const settings = await this.getSettings();
+      const searchParams = {
         part: 'snippet',
         type: 'video',
+        maxResults: params.maxResults || settings.max_results,
         ...params
-      });
+      };
+
+      const response = await this.youtube.search.list(searchParams);
 
       logger.debug('Выполнен поиск видео в YouTube API:', {
         query: params.q,
-        maxResults: params.maxResults,
+        maxResults: searchParams.maxResults,
         totalResults: response.data.pageInfo.totalResults
       });
 

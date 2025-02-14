@@ -6,9 +6,12 @@ class ContestStatsService {
     this.models = null
   }
 
-  async init() {
+  async ensureModels() {
     if (!this.models) {
       this.models = await initializeModels()
+      if (!this.models) {
+        throw new Error('Не удалось инициализировать модели')
+      }
     }
   }
 
@@ -16,9 +19,9 @@ class ContestStatsService {
    * Получение статистики конкурса
    */
   async getStats(contestId) {
+    await this.ensureModels()
     try {
-      await this.init()
-      
+      contestId = contestId.toString()
       let stats = await this.models.ContestStats.findOne({
         where: { contest_id: contestId }
       })
@@ -29,18 +32,14 @@ class ContestStatsService {
           views_count: 0,
           participants_count: 0,
           favorites_count: 0,
-          rating: 0
+          rating: 0,
+          activity_data: {}
         })
-        logger.info('Создана новая статистика конкурса:', { contestId })
       }
 
       return stats
     } catch (error) {
-      logger.error('Ошибка получения статистики конкурса:', {
-        contestId,
-        error: error.message,
-        stack: error.stack
-      })
+      logger.error('Error getting contest stats:', error)
       throw error
     }
   }
@@ -49,15 +48,14 @@ class ContestStatsService {
    * Обновление просмотров
    */
   async incrementViews(contestId) {
+    await this.ensureModels()
     try {
+      contestId = contestId.toString()
       const stats = await this.getStats(contestId)
       await stats.increment('views_count')
       return stats
     } catch (error) {
-      logger.error('Ошибка увеличения просмотров:', {
-        contestId,
-        error: error.message
-      })
+      logger.error('Error incrementing views:', error)
       throw error
     }
   }
@@ -66,25 +64,20 @@ class ContestStatsService {
    * Обновление количества участников
    */
   async updateParticipantsCount(contestId, count) {
+    await this.ensureModels()
     try {
+      contestId = contestId.toString()
       const stats = await this.getStats(contestId)
-      const oldCount = stats.participants_count
       await stats.update({ participants_count: count })
-      
-      logger.info('Обновлено количество участников:', {
+
+      logger.info('Updated participants count:', {
         contestId,
-        oldCount,
-        newCount: count,
-        change: count - oldCount
+        count
       })
-      
+
       return stats
     } catch (error) {
-      logger.error('Ошибка обновления количества участников:', {
-        contestId,
-        count,
-        error: error.message
-      })
+      logger.error('Error updating participants count:', error)
       throw error
     }
   }
@@ -93,65 +86,20 @@ class ContestStatsService {
    * Обновление количества избранных
    */
   async updateFavoritesCount(contestId, count) {
+    await this.ensureModels()
     try {
-      logger.info('Начало обновления количества избранных:', {
-        contestId,
-        newCount: count
-      })
-
+      contestId = contestId.toString()
       const stats = await this.getStats(contestId)
-      const oldCount = stats.favorites_count
-
-      logger.info('Текущая статистика перед обновлением:', {
-        contestId,
-        stats: {
-          id: stats.id,
-          favorites_count: stats.favorites_count,
-          views_count: stats.views_count,
-          participants_count: stats.participants_count
-        }
-      })
-
-      // Проверяем валидность нового значения
-      if (typeof count !== 'number' || count < 0) {
-        logger.error('Некорректное значение счетчика избранных:', {
-          contestId,
-          count,
-          type: typeof count
-        })
-        throw new Error('Некорректное значение счетчика избранных')
-      }
-
       await stats.update({ favorites_count: count })
-      
-      // Проверяем обновленное значение
-      const updatedStats = await this.getStats(contestId)
-      logger.info('Статистика после обновления:', {
+
+      logger.info('Updated favorites count:', {
         contestId,
-        stats: {
-          id: updatedStats.id,
-          favorites_count: updatedStats.favorites_count,
-          views_count: updatedStats.views_count,
-          participants_count: updatedStats.participants_count
-        }
+        count
       })
-      
-      logger.info('Обновлено количество избранных:', {
-        contestId,
-        oldCount,
-        newCount: count,
-        change: count - oldCount,
-        finalCount: updatedStats.favorites_count
-      })
-      
+
       return stats
     } catch (error) {
-      logger.error('Ошибка обновления избранных:', {
-        contestId,
-        count,
-        error: error.message,
-        stack: error.stack
-      })
+      logger.error('Error updating favorites count:', error)
       throw error
     }
   }
@@ -160,30 +108,26 @@ class ContestStatsService {
    * Обновление рейтинга
    */
   async updateRating(contestId, rating) {
+    await this.ensureModels()
     try {
+      contestId = contestId.toString()
       const stats = await this.getStats(contestId)
-      const oldRating = stats.rating
       await stats.update({ rating })
 
-      logger.info('Обновлен рейтинг конкурса:', {
+      logger.info('Updated rating:', {
         contestId,
-        oldRating,
-        newRating: rating,
-        change: rating - oldRating
+        rating
       })
 
+      // Обновляем рейтинг организатора
       const contest = await this.models.Contest.findByPk(contestId)
       if (contest) {
-        await this.updateOrganizerRating(contest.user_id)
+        await this.updateOrganizerRating(contest.organizer_id)
       }
 
       return stats
     } catch (error) {
-      logger.error('Ошибка обновления рейтинга:', {
-        contestId,
-        rating,
-        error: error.message
-      })
+      logger.error('Error updating rating:', error)
       throw error
     }
   }
@@ -192,10 +136,32 @@ class ContestStatsService {
    * Добавление данных активности
    */
   async addActivityData(contestId, data) {
+    await this.ensureModels()
     try {
+      contestId = contestId.toString()
       const stats = await this.getStats(contestId)
-      const activityData = stats.activity_data || []
-      activityData.push(data)
+
+      const activityData = stats.activity_data || {}
+      const timestamp = new Date().toISOString()
+
+      // Обновляем данные активности
+      Object.entries(data).forEach(([key, value]) => {
+        if (!activityData[key]) {
+          activityData[key] = []
+        }
+
+        // Добавляем новую запись
+        activityData[key].push({
+          timestamp,
+          value
+        })
+
+        // Оставляем только последние 100 записей
+        if (activityData[key].length > 100) {
+          activityData[key] = activityData[key].slice(-100)
+        }
+      })
+
       await stats.update({ activity_data: activityData })
       return stats
     } catch (error) {
@@ -207,100 +173,99 @@ class ContestStatsService {
   /**
    * Обновление рейтинга организатора
    */
-  async updateOrganizerRating(userId) {
+  async updateOrganizerRating(organizerId) {
+    await this.ensureModels()
     try {
-      // Получаем все конкурсы пользователя
+      organizerId = organizerId.toString()
+
+      // Получаем все конкурсы организатора
       const contests = await this.models.Contest.findAll({
-        where: { user_id: userId }
+        where: { organizer_id: organizerId }
       })
 
-      if (!contests.length) {
-        logger.info('Нет конкурсов для обновления рейтинга:', { userId })
-        return
+      if (contests.length === 0) {
+        return 0
       }
 
-      // Считаем средний рейтинг
-      const totalRating = contests.reduce((sum, contest) => {
-        return sum + (contest.rating || 0)
-      }, 0)
-      const averageRating = totalRating / contests.length
+      // Собираем рейтинги всех конкурсов
+      const ratings = []
+      for (const contest of contests) {
+        const stats = await this.getStats(contest.id)
+        if (stats.rating > 0) {
+          ratings.push(stats.rating)
+        }
+      }
+
+      // Вычисляем средний рейтинг
+      let averageRating = 0
+      if (ratings.length > 0) {
+        averageRating = ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
+      }
 
       // Обновляем рейтинг организатора
       await this.models.User.update(
-        { organizer_rating: averageRating },
-        { where: { id: userId } }
+        { rating: averageRating },
+        { where: { id: organizerId } }
       )
 
-      logger.info('Обновлен рейтинг организатора:', { 
-        userId,
-        rating: averageRating 
-      })
+      return averageRating
     } catch (error) {
-      logger.error('Ошибка обновления рейтинга организатора:', {
-        userId,
-        error: error.message
-      })
+      logger.error('Error updating organizer rating:', error)
       throw error
     }
   }
 
   async updateContestStats(contestId) {
+    await this.ensureModels()
     try {
-      await this.init()
-      
-      const contest = await this.models.Contest.findByPk(contestId)
+      contestId = contestId.toString()
 
+      const contest = await this.models.Contest.findByPk(contestId)
       if (!contest) {
         logger.warn('Конкурс не найден:', { contestId })
-        return
+        return null
       }
 
-      // Получаем текущую статистику
       const stats = await this.getStats(contestId)
-      
-      // Получаем актуальное количество избранных
-      const favorites = await this.models.FavoriteContest.count({
+
+      // Обновляем количество участников
+      const participantsCount = await this.models.ContestParticipant.count({
         where: { contest_id: contestId }
       })
 
-      // Получаем количество участников
-      const participants = await this.models.ContestParticipation.count({
+      // Обновляем количество избранных
+      const favoritesCount = await this.models.FavoriteContest.count({
         where: { contest_id: contestId }
       })
 
-      // Получаем средний рейтинг из отзывов
+      // Обновляем рейтинг
       const reviews = await this.models.ContestReview.findAll({
         where: { contest_id: contestId },
-        attributes: [
-          [this.models.sequelize.fn('AVG', this.models.sequelize.col('rating')), 'avg_rating']
-        ]
+        attributes: ['rating']
       })
 
-      const avgRating = reviews[0]?.get('avg_rating') || 0
+      let rating = 0
+      if (reviews.length > 0) {
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
+        rating = totalRating / reviews.length
+      }
 
-      // Обновляем статистику
       await stats.update({
-        favorites_count: favorites,
-        participants_count: participants,
-        rating: avgRating
+        participants_count: participantsCount,
+        favorites_count: favoritesCount,
+        rating
       })
 
-      logger.info('Статистика конкурса обновлена:', {
+      logger.info('Updated contest stats:', {
         contestId,
-        stats: {
-          favorites_count: favorites,
-          participants_count: participants,
-          rating: avgRating
-        }
+        participantsCount,
+        favoritesCount,
+        rating
       })
 
       return stats
     } catch (error) {
-      logger.error('Ошибка обновления статистики конкурса:', {
-        contestId,
-        error: error.message,
-        stack: error.stack
-      })
+      logger.error('Error updating contest stats:', error)
       throw error
     }
   }

@@ -8,6 +8,7 @@ const { authMiddleware, adminMiddleware } = require('../middleware/auth.middlewa
 const AdminController = require('../controllers/admin.controller')
 const analyticsController = require('../controllers/analytics.controller')
 const youtubeRoutes = require('../modules/youtube/routes/youtube.routes')
+const systemSettingsRoutes = require('./system_settings.routes')
 
 const adminController = new AdminController()
 
@@ -18,11 +19,17 @@ router.use(adminMiddleware)
 // Подключаем маршруты YouTube
 router.use('/integrations/youtube', youtubeRoutes)
 
+// Подключаем маршруты системных настроек
+router.use('/system-settings', systemSettingsRoutes)
+
 // Получение статистики системы
 router.get('/stats', adminController.getSystemStats.bind(adminController))
 
 // Получение последних действий
-router.get('/activity', adminController.getRecentActions.bind(adminController))
+router.get('/recent-actions', adminController.getRecentActions.bind(adminController))
+
+// Получение активности интеграций
+router.get('/activity', adminController.getIntegrationActivity.bind(adminController))
 
 // Маршруты для аналитики
 router.get('/analytics', analyticsController.getLatestAnalytics.bind(analyticsController))
@@ -41,5 +48,9 @@ router.put('/settings', adminController.updateSettings.bind(adminController))
 
 // Получение системных логов
 router.get('/logs', adminController.getLogs.bind(adminController))
+
+// Маршруты для работы с пользователями
+router.put('/users/:userId', adminController.updateUser.bind(adminController))
+router.delete('/users/:userId', adminController.deleteUser.bind(adminController))
 
 module.exports = router 

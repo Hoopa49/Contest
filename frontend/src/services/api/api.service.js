@@ -16,8 +16,6 @@ class ApiService {
    */
   getAuthHeaders() {
     const token = tokenService.getAccessToken()
-    
-    
     return token ? {
       Authorization: `Bearer ${token}`
     } : {}
@@ -27,24 +25,12 @@ class ApiService {
    * GET запрос
    */
   async get(url, config = {}) {
-    console.debug('Making GET request:', {
-      url,
-      config,
-      headers: this.getAuthHeaders()
-    })
-
     const response = await this.http.get(url, {
       ...config,
       headers: {
         ...config.headers,
         ...this.getAuthHeaders()
       }
-    })
-
-    console.debug('GET response:', {
-      url,
-      status: response.status,
-      data: response.data
     })
 
     return response.data
@@ -54,24 +40,12 @@ class ApiService {
    * POST запрос
    */
   async post(url, data = {}, config = {}) {
-    console.debug('Making POST request:', {
-      url,
-      config,
-      headers: this.getAuthHeaders()
-    })
-
     const response = await this.http.post(url, data, {
       ...config,
       headers: {
         ...config.headers,
         ...this.getAuthHeaders()
       }
-    })
-
-    console.debug('POST response:', {
-      url,
-      status: response.status,
-      data: response.data
     })
 
     return response.data
@@ -81,25 +55,12 @@ class ApiService {
    * PUT запрос
    */
   async put(url, data = {}, config = {}) {
-    console.debug('Making PUT request:', {
-      url,
-      data,
-      config,
-      headers: this.getAuthHeaders()
-    })
-
     const response = await this.http.put(url, data, {
       ...config,
       headers: {
         ...config.headers,
         ...this.getAuthHeaders()
       }
-    })
-
-    console.debug('PUT response:', {
-      url,
-      status: response.status,
-      data: response.data
     })
 
     return response.data
@@ -109,25 +70,37 @@ class ApiService {
    * DELETE запрос
    */
   async delete(url, config = {}) {
-    const response = await this.http.delete(url, config)
-    return this._processResponse(response)
+    const response = await this.http.delete(url, {
+      ...config,
+      headers: {
+        ...config.headers,
+        ...this.getAuthHeaders()
+      }
+    })
+
+    return response.data
   }
 
   /**
    * Обработка ответа от сервера
    */
   _processResponse(response) {
+    if (!response || !response.data) {
+      throw new Error('Пустой ответ от сервера')
+    }
+
     const { data } = response
 
     // Проверяем успешность запроса
-    if (!data.success) {
+    if (data.success === false) {
       throw new Error(data.message || 'Ошибка при выполнении запроса')
     }
 
     return {
       data: data.data,
       message: data.message,
-      meta: data.meta
+      meta: data.meta,
+      success: true
     }
   }
 }

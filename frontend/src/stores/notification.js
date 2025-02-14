@@ -166,6 +166,45 @@ export const useNotificationStore = defineStore('notification', {
       this.settings = null
       this.lastFetchTime = null
       this.clearError()
+    },
+
+    // Добавление уведомления
+    addNotification({ type, message, timeout = 5000 }) {
+      try {
+        const notification = {
+          id: Date.now(),
+          type,
+          message,
+          timeout,
+          read: false,
+          createdAt: new Date().toISOString()
+        }
+        
+        this.items.unshift(notification)
+        this.unreadCount++
+        
+        if (timeout > 0) {
+          setTimeout(() => {
+            const index = this.items.findIndex(n => n.id === notification.id)
+            if (index !== -1) {
+              this.items.splice(index, 1)
+              if (!notification.read) {
+                this.unreadCount = Math.max(0, this.unreadCount - 1)
+              }
+            }
+          }, timeout)
+        }
+        
+        return notification
+      } catch (error) {
+        console.error('Error adding notification:', error)
+        throw error
+      }
+    },
+
+    // Алиас для addNotification для обратной совместимости
+    show({ type, message, timeout = 5000 }) {
+      return this.addNotification({ type, message, timeout })
     }
   }
 }) 

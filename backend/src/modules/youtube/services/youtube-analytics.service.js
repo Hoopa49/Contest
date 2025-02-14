@@ -1,14 +1,40 @@
 const { Op, fn, col, literal } = require('sequelize');
 const { logger } = require('../../../logging');
-const { youtube_video: YoutubeVideo, youtube_channel: YoutubeChannel, youtube_analytics: YoutubeAnalytics } = require('../../../models');
+const { initializeModels } = require('../../../models');
 
 class YoutubeAnalyticsService {
+  constructor() {
+    this.models = null;
+    this.initialized = false;
+  }
+
+  async initialize() {
+    try {
+      if (!this.initialized) {
+        this.models = await initializeModels();
+        if (!this.models) {
+          throw new Error('Не удалось инициализировать модели');
+        }
+        this.initialized = true;
+        logger.info('YouTube Analytics сервис успешно инициализирован');
+      }
+      return true;
+    } catch (error) {
+      logger.error('Ошибка при инициализации YouTube Analytics сервиса:', error);
+      throw error;
+    }
+  }
+
   /**
    * Агрегация статистики за день
    * @param {Date} date - дата для агрегации
    */
   async aggregateStats(date = new Date()) {
     try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
       // Нормализуем дату до начала дня
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
@@ -17,7 +43,7 @@ class YoutubeAnalyticsService {
       endOfDay.setHours(23, 59, 59, 999);
 
       // Получаем или создаем запись статистики за указанную дату
-      const [analytics, created] = await YoutubeAnalytics.findOrCreate({
+      const [analytics, created] = await this.models.YoutubeAnalytics.findOrCreate({
         where: {
           date: startOfDay
         },
@@ -32,7 +58,7 @@ class YoutubeAnalyticsService {
       });
 
       // Получаем статистику по конкурсам за день
-      const contestStats = await YoutubeVideo.findAll({
+      const contestStats = await this.models.YoutubeVideo.findAll({
         where: {
           is_contest: true,
           channel_id: { [Op.ne]: null },
@@ -105,6 +131,10 @@ class YoutubeAnalyticsService {
    */
   async getStats(days = 30) {
     try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
       const endDate = new Date();
       const startDate = new Date(endDate.getTime() - (days * 86400000));
 
@@ -117,7 +147,7 @@ class YoutubeAnalyticsService {
       await Promise.all(aggregationPromises);
 
       // Получаем статистику за период
-      const stats = await YoutubeAnalytics.findAll({
+      const stats = await this.models.YoutubeAnalytics.findAll({
         where: {
           date: {
             [Op.between]: [startDate, endDate]
@@ -127,7 +157,7 @@ class YoutubeAnalyticsService {
       });
 
       // Получаем общую статистику
-      const totals = await YoutubeVideo.findOne({
+      const totals = await this.models.YoutubeVideo.findOne({
         where: { 
           is_contest: true,
           channel_id: { [Op.ne]: null }
@@ -140,7 +170,7 @@ class YoutubeAnalyticsService {
       });
 
       // Получаем количество каналов с конкурсами
-      const channelsCount = await YoutubeChannel.count({
+      const channelsCount = await this.models.YoutubeChannel.count({
         where: { 
           contest_channel: true,
           channel_id: { [Op.ne]: null }
@@ -171,6 +201,10 @@ class YoutubeAnalyticsService {
 
   async updateQuotaStats(used, error = null) {
     try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
       const today = new Date().toISOString().split('T')[0];
       const stats = await this.getQuotaStats();
       
@@ -210,6 +244,10 @@ class YoutubeAnalyticsService {
 
   async getAnalytics(days = 7) {
     try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
       const stats = await this.getQuotaStats();
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);

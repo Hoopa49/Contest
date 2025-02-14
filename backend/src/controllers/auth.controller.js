@@ -4,10 +4,12 @@ const logger = require('../logging')
 const BaseController = require('./base.controller')
 const { ValidationError } = require('../utils/errors')
 const config = require('../config')
+const UserModel = require('../models/user.model')
 
 class AuthController extends BaseController {
   constructor() {
     super(userService)
+    this.userService = userService
   }
 
   register = this.handleAsync(async (req, res) => {
@@ -34,26 +36,46 @@ class AuthController extends BaseController {
   })
 
   login = this.handleAsync(async (req, res) => {
-    const { email, password, remember } = req.body
-    
-    const result = await userService.authenticateUser({ email, password, remember })
-    
-    // Устанавливаем refresh token в куки
-    res.cookie('refreshToken', result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: remember ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000 // 30 дней или 24 часа
-    })
-    
-    res.json({
-      success: true,
-      message: 'Вход выполнен успешно',
-      data: {
-        user: result.user,
-        accessToken: result.token
+    try {
+      const { email, password, remember } = req.body
+
+      if (!email || !password) {
+        throw new ValidationError('Email и пароль обязательны')
       }
-    })
+
+      // Аутентифицируем пользователя
+      const authenticatedUser = await this.userService.authenticateUser({ email, password, remember })
+      
+      // Обновляем дату последнего входа
+      await UserModel.update(
+        { last_login: new Date() },
+        { where: { id: authenticatedUser.id } }
+      )
+
+      // Генерируем токены
+      const accessToken = jwtService.generateAccessToken(authenticatedUser)
+      const refreshToken = jwtService.generateRefreshToken(authenticatedUser)
+      
+      // Устанавливаем refresh token в куки
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: remember ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000 // 30 дней или 24 часа
+      })
+      
+      res.json({
+        success: true,
+        message: 'Вход выполнен успешно',
+        data: {
+          user: authenticatedUser,
+          accessToken
+        }
+      })
+    } catch (error) {
+      logger.error('Ошибка при входе:', error)
+      throw error
+    }
   })
 
   refreshToken = this.handleAsync(async (req, res) => {

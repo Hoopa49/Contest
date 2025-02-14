@@ -13,11 +13,8 @@ class AuthAPI {
    * Регистрация нового пользователя
    */
   async register(data) {
-    console.log('Данные для регистрации:', data)
-    
     try {
       const response = await http.post('/auth/register', data)
-      console.log('Ответ от сервера:', response)
       
       if (response.data?.success && response.data?.data) {
         const { user, accessToken, refreshToken } = response.data.data
@@ -56,15 +53,7 @@ class AuthAPI {
    */
   async login(credentials) {
     try {
-      console.debug('Login attempt:', { email: credentials.email })
-      
       const response = await http.post('/auth/login', credentials)
-      
-      console.debug('Raw login response:', {
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data
-      })
 
       if (!response.data?.success) {
         throw new Error(response.data?.message || 'Ошибка входа')
@@ -82,9 +71,7 @@ class AuthAPI {
       })
 
       // Получаем данные пользователя
-      console.debug('Fetching user data...')
       const userData = await this.getCurrentUser()
-      console.debug('User data received:', userData)
 
       const user = userData?.user || userData
       if (!user || !user.id) {
@@ -153,17 +140,10 @@ class AuthAPI {
    */
   async getCurrentUser() {
     try {
-      console.debug('Getting current user')
-      
       // Проверяем наличие токена
       const token = tokenService.getAccessToken()
-      console.debug('Access token for request:', {
-        hasToken: !!token,
-        tokenStart: token ? token.substring(0, 20) + '...' : null
-      })
 
       const response = await apiService.get('/auth/me')
-      console.debug('Current user response:', response)
 
       // Проверяем наличие данных пользователя
       if (!response?.data?.user) {
@@ -250,18 +230,7 @@ class AuthAPI {
         throw new Error(data.message || 'Ошибка при авторизации через Telegram')
       }
       
-      // Сохраняем токены
-      const { accessToken, refreshToken } = data.data
-      tokenService.saveTokens({ 
-        accessToken,
-        refreshToken
-      })
-      
-      return {
-        user: data.data.user,
-        accessToken,
-        refreshToken
-      }
+      return data.data
     } catch (error) {
       console.error('Ошибка при обработке Telegram callback:', error)
       tokenService.removeTokens()

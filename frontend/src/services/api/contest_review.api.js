@@ -1,4 +1,13 @@
 import { apiService } from './api.service'
+import { tokenService } from './auth/token.service'
+
+const checkAuth = () => {
+  const token = tokenService.getAccessToken()
+  if (!token) {
+    throw new Error('Необходима авторизация')
+  }
+  return true
+}
 
 const reviewApi = {
   /**
@@ -8,6 +17,7 @@ const reviewApi = {
    */
   async getReviews(contestId) {
     try {
+      checkAuth()
       const response = await apiService.get(`/contests/${contestId}/reviews`)
       console.log('Reviews response:', response)
       
@@ -47,6 +57,7 @@ const reviewApi = {
    */
   async addReview(contestId, data) {
     try {
+      checkAuth()
       console.log('Raw data received:', {
         contestId,
         data
@@ -101,6 +112,7 @@ const reviewApi = {
    */
   async updateReview(reviewId, data) {
     try {
+      checkAuth()
       console.log('Update review request:', {
         reviewId,
         data
@@ -147,6 +159,7 @@ const reviewApi = {
    */
   async deleteReview(reviewId) {
     try {
+      checkAuth()
       console.log('Delete review request:', { reviewId })
       
       const response = await apiService.delete(`/contests/reviews/${reviewId}`)
@@ -183,14 +196,21 @@ const reviewApi = {
    */
   async toggleLike(reviewId) {
     try {
+      checkAuth()
       const response = await apiService.post(`/contests/reviews/${reviewId}/like`)
       console.log('Toggle like response:', response)
       
       if (response.success) {
+        // Проверяем различные варианты структуры ответа
+        const isLiked = response.data?.is_liked ?? response.data?.isLiked ?? response.data
+        const likesCount = response.data?.likes_count ?? response.data?.likesCount ?? null
+        
         return { 
-          success: true, 
-          isLiked: response.data?.isLiked,
-          likesCount: response.data?.likesCount
+          success: true,
+          data: {
+            isLiked: !!isLiked, // Приводим к булевому значению
+            likesCount: typeof likesCount === 'number' ? likesCount : undefined
+          }
         }
       }
       return { 
@@ -214,6 +234,7 @@ const reviewApi = {
    */
   async reportReview(reviewId, reason) {
     try {
+      checkAuth()
       console.log('Report review request:', { reviewId, reason })
       
       const response = await apiService.post(`/contests/reviews/${reviewId}/report`, { reason })

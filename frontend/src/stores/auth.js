@@ -21,14 +21,7 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isAdmin: (state) => {
-      console.debug('Checking admin role:', {
-        user: state.user,
-        role: state.user?.role,
-        isAdmin: state.user?.role === 'admin'
-      })
-      return state.user?.role === 'admin'
-    }
+    isAdmin: (state) => state.user?.role === 'admin'
   },
 
   actions: {
@@ -68,7 +61,6 @@ export const useAuthStore = defineStore('auth', {
       this.initPromise = withAsync(this, async () => {
         try {
           const isValid = await this.isSessionValid()
-          console.debug('Session validity check:', { isValid })
 
           let result = {
             user: null,
@@ -77,10 +69,6 @@ export const useAuthStore = defineStore('auth', {
 
           if (isValid) {
             const response = await authService.getCurrentUser()
-            console.debug('Current user data received:', {
-              response,
-              user: response.user || response
-            })
 
             this.user = response.user || response
             this.isAuthenticated = true
@@ -100,7 +88,6 @@ export const useAuthStore = defineStore('auth', {
           this.isInitialized = true
           return result
         } catch (error) {
-          console.error('Error during initialization:', error)
           this.clearAuth()
           this.isInitialized = true
           throw error
@@ -114,25 +101,12 @@ export const useAuthStore = defineStore('auth', {
      * Обновление состояния после успешной авторизации
      */
     async updateAuthState(user, tokens) {
-      console.debug('Updating auth state:', {
-        user,
-        tokens: tokens ? { 
-          accessToken: !!tokens.accessToken,
-          refreshToken: !!tokens.refreshToken
-        } : null
-      })
-      
       // Сохраняем токены
       tokenService.saveTokens(tokens)
       
       // Обновляем состояние
       this.user = user
       this.isAuthenticated = true
-      
-      console.debug('Auth state updated:', {
-        user: this.user,
-        isAuthenticated: this.isAuthenticated
-      })
 
       // Загружаем избранные конкурсы
       const contestsStore = useContestsStore()
@@ -149,7 +123,6 @@ export const useAuthStore = defineStore('auth', {
         const { user, tokens } = await authService.register(userData)
         return this.updateAuthState(user, tokens)
       } catch (error) {
-        console.error('[auth] Registration error:', error)
         throw error
       }
     },
@@ -162,7 +135,6 @@ export const useAuthStore = defineStore('auth', {
         const { user, tokens } = await authService.login(credentials)
         return this.updateAuthState(user, tokens)
       } catch (error) {
-        console.error('[auth] Login error:', error.message)
         throw error
       }
     },
@@ -191,14 +163,9 @@ export const useAuthStore = defineStore('auth', {
      * Очистка данных авторизации
      */
     clearAuth() {
-      console.debug('Clearing auth state')
       this.user = null
       this.isAuthenticated = false
       tokenService.removeTokens()
-      console.debug('Auth state cleared:', {
-        user: this.user,
-        isAuthenticated: this.isAuthenticated
-      })
     },
 
     /**
@@ -209,7 +176,6 @@ export const useAuthStore = defineStore('auth', {
         const data = await authService.getTelegramAuthUrl()
         return data
       } catch (error) {
-        console.error('Failed to get Telegram auth URL:', error)
         throw error
       }
     },
@@ -227,7 +193,6 @@ export const useAuthStore = defineStore('auth', {
         
         return { user, accessToken, refreshToken }
       } catch (error) {
-        console.error('Failed to handle Telegram callback:', error)
         throw error
       }
     }

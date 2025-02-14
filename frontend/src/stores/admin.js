@@ -34,7 +34,9 @@ export const useAdminStore = defineStore('admin', () => {
       users: {},
       contests: {},
       logs: {}
-    }
+    },
+    loading: false,
+    error: null
   })
 
   // Refs
@@ -150,16 +152,47 @@ export const useAdminStore = defineStore('admin', () => {
     return { crud, settings }
   }
 
-  const fetchUsers = async (params = {}) => {
-    return withAsync(state.value, async () => {
-      const response = await adminService.getUsers(params)
+  const fetchUsers = async () => {
+    try {
+      state.value.loading = true
+      const response = await adminService.getUsers()
       const users = Array.isArray(response.data) ? response.data : []
-      state.value.items = users.map(user => ({
-        ...user,
-        is_blocked: user.is_blocked
-      }))
-      return state.value.items
-    })
+      state.value.items = users
+      return response
+    } catch (error) {
+      state.value.error = error.message
+      throw error
+    } finally {
+      state.value.loading = false
+    }
+  }
+
+  const updateUser = async (userId, userData) => {
+    try {
+      state.value.loading = true
+      const response = await adminService.updateUser(userId, userData)
+      await fetchUsers() // Обновляем список после изменения
+      return response
+    } catch (error) {
+      state.value.error = error.message
+      throw error
+    } finally {
+      state.value.loading = false
+    }
+  }
+
+  const deleteUser = async (userId) => {
+    try {
+      state.value.loading = true
+      const response = await adminService.deleteUser(userId)
+      await fetchUsers() // Обновляем список после удаления
+      return response
+    } catch (error) {
+      state.value.error = error.message
+      throw error
+    } finally {
+      state.value.loading = false
+    }
   }
 
   const fetchSystemStats = async () => {
@@ -240,6 +273,8 @@ export const useAdminStore = defineStore('admin', () => {
     init,
     setActiveTab,
     fetchUsers,
+    updateUser,
+    deleteUser,
     fetchSystemStats,
     fetchRecentActions,
     fetchLogs,
