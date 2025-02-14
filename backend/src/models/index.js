@@ -10,9 +10,8 @@ const logger = require('../logging')
 const User = require('./user.model')
 const Contest = require('./contest.model')
 const DraftContest = require('./draft_contest.model')
-const Settings = require('./settings.model')
 const SystemSettings = require('./system_settings.model')
-const Log = require('./log.model')
+const SystemSettingsHistory = require('./system_settings_history.model')
 const ContestParticipation = require('./contest_participation.model')
 const FavoriteContest = require('./favorite_contest.model')
 const Notification = require('./notification.model')
@@ -43,32 +42,59 @@ const initializeModels = async () => {
 
   try {
     // Инициализируем каждую модель
-    const modelsList = [
-      User, Contest, DraftContest, Settings, SystemSettings, Log,
-      ContestParticipation, FavoriteContest, Notification, NotificationSettings,
-      ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
-      YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
-      YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
-      AnalyticsData
-    ];
-
-    modelsList.forEach(model => {
-      if (model && typeof model.init === 'function') {
-        model.init(sequelize)
-      }
-    })
+    User.init(sequelize)
+    Contest.init(sequelize)
+    DraftContest.init(sequelize)
+    SystemSettings.init(sequelize)
+    SystemSettingsHistory.init(sequelize)
+    ContestParticipation.init(sequelize)
+    FavoriteContest.init(sequelize)
+    Notification.init(sequelize)
+    NotificationSettings.init(sequelize)
+    ContestComment.init(sequelize)
+    ContestReview.init(sequelize)
+    ReviewLike.init(sequelize)
+    ContestStats.init(sequelize)
+    ContestShareStats.init(sequelize)
+    YoutubeVideo.init(sequelize)
+    YoutubeChannel.init(sequelize)
+    YoutubeApiQuota.init(sequelize)
+    YoutubeAnalytics.init(sequelize)
+    YoutubeSettings.init(sequelize)
+    IntegrationStats.init(sequelize)
+    IntegrationEvent.init(sequelize)
+    IntegrationActivity.init(sequelize)
+    AnalyticsData.init(sequelize)
 
     // Создаем объект моделей
     models = {
-      User, Contest, DraftContest, Settings, SystemSettings, Log,
-      ContestParticipation, FavoriteContest, Notification, NotificationSettings,
-      ContestComment, ContestReview, ReviewLike, ContestStats, ContestShareStats,
-      YoutubeVideo, YoutubeChannel, YoutubeApiQuota, YoutubeAnalytics,
-      YoutubeSettings, IntegrationStats, IntegrationEvent, IntegrationActivity,
-      AnalyticsData
+      User,
+      Contest,
+      DraftContest,
+      SystemSettings,
+      SystemSettingsHistory,
+      ContestParticipation,
+      FavoriteContest,
+      Notification,
+      NotificationSettings,
+      ContestComment,
+      ContestReview,
+      ReviewLike,
+      ContestStats,
+      ContestShareStats,
+      YoutubeVideo,
+      YoutubeChannel,
+      YoutubeApiQuota,
+      YoutubeAnalytics,
+      YoutubeSettings,
+      IntegrationStats,
+      IntegrationEvent,
+      IntegrationActivity,
+      AnalyticsData,
+      sequelize
     }
 
-    // Устанавливаем ассоциации
+    // Устанавливаем ассоциации между моделями
     Object.values(models).forEach(model => {
       if (model && typeof model.associate === 'function') {
         model.associate(models)
@@ -76,17 +102,11 @@ const initializeModels = async () => {
     })
 
     initialized = true
-    logger.info('Models initialized successfully', {
-      modelCount: Object.keys(models).length,
-      modelNames: Object.keys(models).join(', ')
-    })
-
+    logger.info('Модели успешно инициализированы')
+    
     return models
   } catch (error) {
-    logger.error('Error initializing models:', {
-      error: error.message,
-      stack: error.stack
-    })
+    logger.error('Ошибка инициализации моделей:', error)
     throw error
   }
 }

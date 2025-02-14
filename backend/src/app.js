@@ -40,8 +40,7 @@ const {
   errorLoggerMiddleware 
 } = require('./middleware/http-logger.middleware');
 const { authContextMiddleware } = require('./logging/auth-context');
-const systemLogger = require('./logging/system-logger')
-const { logger } = require('./logging')
+const logger = require('./logging')
 const morgan = require('morgan')
 const { initializeModels } = require('./models')
 const services = require('./services')
@@ -57,19 +56,19 @@ const app = express()
 const initApp = async () => {
   try {
     // Инициализируем Redis
-    systemLogger.info('Инициализация Redis...')
+    logger.info('Инициализация Redis...')
     await redisWrapper.initialize()
     
     // Инициализируем rate limiter
-    systemLogger.info('Инициализация rate limiter...')
+    logger.info('Инициализация rate limiter...')
     const limiterConfig = await createRateLimiter()
     
     // Инициализируем модели
-    systemLogger.info('Инициализация моделей...')
+    logger.info('Инициализация моделей...')
     const models = await initializeModels()
     
     // Инициализируем сервисы
-    systemLogger.info('Инициализация сервисов...')
+    logger.info('Инициализация сервисов...')
     await services.init(models)
 
     // Базовые middleware
@@ -102,7 +101,7 @@ const initApp = async () => {
           }
         } catch (e) {
           if (e.name !== 'JsonWebTokenError') {
-            systemLogger.error('Ошибка верификации JWT', {
+            logger.error('Ошибка верификации JWT', {
               error: e,
               token: '[REDACTED]'
             });
@@ -135,10 +134,10 @@ const initApp = async () => {
     // Инициализация cron задач
     setupCronJobs();
 
-    systemLogger.info('Приложение успешно инициализировано');
+    logger.info('Приложение успешно инициализировано');
     return app;
   } catch (error) {
-    systemLogger.error('Ошибка при инициализации приложения:', {
+    logger.error('Ошибка при инициализации приложения:', {
       error: {
         message: error.message,
         stack: error.stack

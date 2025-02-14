@@ -9,31 +9,16 @@ class ContestService extends BaseService {
   constructor() {
     super('Contest')
     this.models = null
-    this.initializeService()
-  }
-
-  async initializeService() {
-    try {
-      this.models = await initializeModels()
-      if (!this.models) {
-        throw new Error('Не удалось инициализировать модели')
-      }
-    } catch (error) {
-      logger.error('Ошибка инициализации ContestService:', {
-        error: error.message,
-        stack: error.stack
-      })
-    }
   }
 
   async ensureModels() {
     if (!this.models) {
-      this.models = await initializeModels()
-      if (!this.models) {
+      const models = await initializeModels()
+      if (!models) {
         throw new Error('Не удалось инициализировать модели')
       }
+      this.init(models)
     }
-    return this.models
   }
 
   // Преобразование snake_case в camelCase
@@ -372,8 +357,7 @@ class ContestService extends BaseService {
     })
 
     try {
-      const contest = await this.models.Contest.findOne({
-        where: { id: contestId },
+      const contest = await this.models.Contest.findByPk(contestId.toString(), {
         include: [
           {
             model: this.models.User,
@@ -393,7 +377,7 @@ class ContestService extends BaseService {
           {
             model: this.models.ContestParticipation,
             as: 'participations',
-            where: userId ? { user_id: userId } : undefined,
+            where: userId ? { user_id: userId.toString() } : undefined,
             required: false,
             attributes: ['id', 'status', 'created_at']
           },
@@ -407,26 +391,6 @@ class ContestService extends BaseService {
               'rating'
             ]
           }
-        ],
-        attributes: [
-          'id',
-          'title',
-          'description',
-          'platform_type',
-          'platform_id',
-          'source_url',
-          'start_date',
-          'end_date',
-          'contest_status',
-          'prize_value',
-          'rules_data',
-          'prizes_data',
-          'requirements_data',
-          'allow_comments',
-          'allow_reviews',
-          'allow_rating',
-          'created_at',
-          'updated_at'
         ]
       })
 
@@ -440,8 +404,8 @@ class ContestService extends BaseService {
       if (userId) {
         const favorite = await this.models.FavoriteContest.findOne({
           where: {
-            contest_id: contestId,
-            user_id: userId
+            contest_id: contestId.toString(),
+            user_id: userId.toString()
           }
         })
         isFavorite = !!favorite
@@ -800,16 +764,5 @@ class ContestService extends BaseService {
 // Создаем экземпляр сервиса
 const contestService = new ContestService()
 
-module.exports = {
-  getContestsWithPagination: contestService.getContestsWithPagination.bind(contestService),
-  getRecentContests: contestService.getRecentContests.bind(contestService),
-  getContestById: contestService.getContestById.bind(contestService),
-  createContest: contestService.createContest.bind(contestService),
-  updateContest: contestService.updateContest.bind(contestService),
-  deleteContest: contestService.deleteContest.bind(contestService),
-  participate: contestService.participate.bind(contestService),
-  hasUserParticipated: contestService.hasUserParticipated.bind(contestService),
-  toggleFavorite: contestService.toggleFavorite.bind(contestService),
-  getFavoriteContests: contestService.getFavoriteContests.bind(contestService),
-  getContestsByAuthor: contestService.getContestsByAuthor.bind(contestService)
-} 
+// Экспортируем сам сервис
+module.exports = contestService 

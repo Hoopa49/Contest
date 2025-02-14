@@ -314,6 +314,7 @@ const fetchContest = async () => {
       has_user_participated: Boolean(response.has_user_participated),
       allow_reviews: response.allow_reviews !== false,
       allow_comments: response.allow_comments !== false,
+      allowRating: response.allow_rating !== false,
       image: response.image || null,
       organizer: response.organizer || response.author || {
         id: null,

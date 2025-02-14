@@ -1,8 +1,20 @@
 'use strict'
 
-const { ContestShareStats, Contest } = require('../../../models')
-const { logger } = require('../../../logging')
+const { initializeModels } = require('../../../models')
+const logger = require('../../../logging')
 const { ApiError } = require('../../../utils/errors')
+
+let models = null
+
+const ensureModels = async () => {
+  if (!models) {
+    models = await initializeModels()
+    if (!models) {
+      throw new Error('Не удалось инициализировать модели')
+    }
+  }
+  return models
+}
 
 /**
  * Получение статистики шеринга для конкурса
@@ -16,6 +28,8 @@ const getContestShareStats = async (req, res, next) => {
       url: req.originalUrl
     })
 
+    const { Contest, ContestShareStats } = await ensureModels()
+
     // Проверяем существование конкурса
     const contest = await Contest.findByPk(id)
     if (!contest) {
@@ -27,7 +41,7 @@ const getContestShareStats = async (req, res, next) => {
     // Получаем статистику шеринга
     const shareStats = await ContestShareStats.findAll({
       where: { contest_id: id },
-      attributes: ['network', 'share_count'],
+      attributes: ['platform', 'shares_count'],
       raw: true
     })
 
@@ -46,13 +60,13 @@ const getContestShareStats = async (req, res, next) => {
     // Заполняем значения из базы данных
     if (shareStats && shareStats.length > 0) {
       shareStats.forEach(stat => {
-        if (stat && stat.network) {
+        if (stat && stat.platform) {
           // Ищем соответствующий ключ в statsObject независимо от регистра
           const networkKey = Object.keys(statsObject).find(
-            key => key.toLowerCase() === stat.network.toLowerCase()
+            key => key.toLowerCase() === stat.platform.toLowerCase()
           )
           if (networkKey) {
-            statsObject[networkKey] = parseInt(stat.share_count) || 0
+            statsObject[networkKey] = parseInt(stat.shares_count) || 0
           }
         }
       })
@@ -81,6 +95,8 @@ const incrementShareCount = async (req, res, next) => {
       url: req.originalUrl,
       body: req.body
     })
+
+    const { Contest, ContestShareStats } = await ensureModels()
 
     if (!network) {
       logger.error('Network not specified in request')
@@ -115,10 +131,10 @@ const incrementShareCount = async (req, res, next) => {
     const [shareStat, created] = await ContestShareStats.findOrCreate({
       where: { 
         contest_id: id,
-        network: normalizedNetwork
+        platform: normalizedNetwork
       },
       defaults: {
-        share_count: 0
+        shares_count: 0
       }
     })
 
@@ -128,14 +144,14 @@ const incrementShareCount = async (req, res, next) => {
     })
 
     // Увеличиваем счетчик
-    await shareStat.increment('share_count')
+    await shareStat.increment('shares_count')
     await shareStat.reload()
 
     logger.info('Updated share stats:', shareStat.toJSON())
 
     return res.status(200).json({
-      network: shareStat.network,
-      share_count: shareStat.share_count
+      platform: shareStat.platform,
+      shares_count: shareStat.shares_count
     })
   } catch (error) {
     logger.error('Error in incrementShareCount:', error)

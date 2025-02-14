@@ -27,7 +27,7 @@ class ContestController extends BaseController {
   async getContests(req, res) {
     return this.handleAsync(async () => {
       const { page, perPage, search, platform_type, status, sortBy } = req.query
-      const userId = req.user?.id
+      const userId = req.user?.id ? req.user.id.toString() : undefined
       const result = await this.service.getContestsWithPagination({
         page: parseInt(page) || 1,
         perPage: parseInt(perPage) || 12,
@@ -54,8 +54,8 @@ class ContestController extends BaseController {
   async getContestById(req, res) {
     return this.handleAsync(async () => {
       const { id } = req.params
-      const userId = req.user?.id
-      const contest = await this.service.getContestById(id, userId)
+      const userId = req.user?.id ? req.user.id.toString() : undefined
+      const contest = await this.service.getContestById(id.toString(), userId)
       res.json({
         success: true,
         data: contest
@@ -70,7 +70,7 @@ class ContestController extends BaseController {
     return this.handleAsync(async () => {
       const contest = await this.service.createContest({
         ...req.body,
-        userId: req.user.id
+        userId: req.user.id.toString()
       })
       res.status(201).json({
         success: true,
@@ -85,7 +85,7 @@ class ContestController extends BaseController {
   async updateContest(req, res) {
     return this.handleAsync(async () => {
       const { id } = req.params
-      const contest = await this.service.updateContest(id, req.body, req.user.id)
+      const contest = await this.service.updateContest(id.toString(), req.body, req.user.id.toString())
       res.json({
         success: true,
         data: contest
@@ -99,7 +99,7 @@ class ContestController extends BaseController {
   async deleteContest(req, res) {
     return this.handleAsync(async () => {
       const { id } = req.params
-      await this.service.deleteContest(id, req.user.id)
+      await this.service.deleteContest(id.toString(), req.user.id.toString())
       res.status(204).end()
     })(req, res)
   }
@@ -111,7 +111,7 @@ class ContestController extends BaseController {
     return this.handleAsync(async () => {
       const { id } = req.params
       const { conditions } = req.body
-      const result = await this.service.participate(id, req.user.id, conditions)
+      const result = await this.service.participate(id.toString(), req.user.id.toString(), conditions)
       res.json({
         success: true,
         data: result
@@ -125,7 +125,7 @@ class ContestController extends BaseController {
   async toggleFavorite(req, res) {
     return this.handleAsync(async () => {
       const { id } = req.params
-      const userId = req.user?.id
+      const userId = req.user?.id ? req.user.id.toString() : undefined
       
       if (!userId) {
         return res.status(401).json({
@@ -135,7 +135,7 @@ class ContestController extends BaseController {
       }
 
       // Получаем обновленные данные от сервиса
-      const result = await this.service.toggleFavorite(id, userId)
+      const result = await this.service.toggleFavorite(id.toString(), userId)
       
       if (typeof result?.isFavorite !== 'boolean') {
         log.error('Invalid service response:', result)
@@ -157,7 +157,7 @@ class ContestController extends BaseController {
    */
   async getFavoriteContests(req, res) {
     return this.handleAsync(async () => {
-      const userId = req.user?.id
+      const userId = req.user?.id ? req.user.id.toString() : undefined
       if (!userId) {
         return res.json({
           success: true,

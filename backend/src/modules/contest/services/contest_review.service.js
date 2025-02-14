@@ -1,146 +1,266 @@
-const { ContestReview, User, Contest, ReviewLike } = require('../../../models')
-const { logger } = require('../../../logging')
+const { initializeModels } = require('../../../models')
+const logger = require('../../../logging')
 const contestStatsService = require('../../../services/contest_stats.service')
 
 class ContestReviewService {
-  async getReviews(contestId, page = 1, limit = 10, userId = null) {
+  constructor() {
+    this.models = null
+  }
+
+  async ensureModels() {
+    if (!this.models) {
+      this.models = await initializeModels()
+      if (!this.models) {
+        throw new Error('Не удалось инициализировать модели')
+      }
+    }
+  }
+
+  async getReviews(contestId, page = 1, limit = 10, userId) {
+    await this.ensureModels()
     try {
-      const reviews = await ContestReview.findAndCountAll({
-        where: { contest_id: contestId },
+      // Валидация contestId
+      if (!contestId || typeof contestId === 'object') {
+        logger.error('Invalid contestId:', { contestId })
+        throw new Error('Некорректный ID конкурса')
+      }
+
+      // Преобразуем в строку и проверяем формат UUID
+      const validatedId = contestId.toString()
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(validatedId)) {
+        logger.error('Invalid UUID format:', { contestId: validatedId })
+        throw new Error('Некорректный формат ID конкурса')
+      }
+
+      const offset = (page - 1) * limit
+
+      const { count, rows } = await this.models.ContestReview.findAndCountAll({
+        where: { contest_id: validatedId },
         include: [
           {
-            model: User,
+            model: this.models.User,
             as: 'author',
-            attributes: ['id', 'first_name', 'last_name', 'email', 'avatar']
-          },
-          {
-            model: User,
-            as: 'liked_by',
-            attributes: ['id'],
-            through: { attributes: [] }
+            attributes: ['id', 'username', 'avatar']
           }
         ],
-        order: [['created_at', 'DESC']],
-        limit: limit,
-        offset: (page - 1) * limit
+        attributes: [
+          'id', 'rating', 'content', 'is_edited', 'likes_count',
+          'created_at', 'updated_at'
+        ],
+        limit,
+        offset,
+        order: [['created_at', 'DESC']]
       })
 
-      const formattedReviews = reviews.rows.map(review => {
-        const reviewJson = review.toJSON()
-        return {
-          ...reviewJson,
-          author: {
-            id: reviewJson.author.id,
-            username: `${reviewJson.author.first_name} ${reviewJson.author.last_name}`.trim(),
-            avatar: reviewJson.author.avatar
-          },
-          is_liked: userId ? reviewJson.liked_by.some(user => user.id === userId) : false,
-          likes_count: reviewJson.likes_count || 0
+      // Если передан userId, проверяем лайки пользователя
+      let userLikes = []
+      if (userId) {
+        userLikes = await this.models.ReviewLike.findAll({
+          where: {
+            user_id: userId,
+            review_id: rows.map(r => r.id)
+          }
+        })
+      }
+
+      const reviews = rows.map(review => {
+        const json = review.toJSON()
+        
+        try {
+          // Получаем сырые значения дат из json
+          const rawCreatedAt = json.created_at;
+          const rawUpdatedAt = json.updated_at;
+
+          logger.debug('Raw date values:', {
+            reviewId: json.id,
+            rawCreatedAt,
+            rawUpdatedAt,
+            createdAtType: typeof rawCreatedAt,
+            updatedAtType: typeof rawUpdatedAt
+          });
+
+          // Преобразуем даты, учитывая возможные форматы
+          let created_at, updated_at;
+
+          if (rawCreatedAt instanceof Date) {
+            created_at = rawCreatedAt.toISOString();
+          } else if (typeof rawCreatedAt === 'string') {
+            // Для строк в формате PostgreSQL (2025-02-09 14:37:01.836+00)
+            created_at = new Date(rawCreatedAt.replace(' ', 'T')).toISOString();
+          } else {
+            logger.error('Invalid created_at format:', {
+              reviewId: json.id,
+              rawCreatedAt,
+              type: typeof rawCreatedAt
+            });
+            throw new Error(`Некорректный формат даты создания: ${typeof rawCreatedAt}`);
+          }
+
+          if (rawUpdatedAt instanceof Date) {
+            updated_at = rawUpdatedAt.toISOString();
+          } else if (typeof rawUpdatedAt === 'string') {
+            updated_at = new Date(rawUpdatedAt.replace(' ', 'T')).toISOString();
+          } else {
+            // Если дата обновления некорректная, используем дату создания
+            updated_at = created_at;
+          }
+
+          return {
+            ...json,
+            is_liked: userLikes.some(like => like.review_id === json.id),
+            created_at,
+            updated_at
+          }
+        } catch (error) {
+          logger.error('Error processing dates:', { 
+            reviewId: json.id,
+            error: error.message,
+            raw_created_at: json.created_at,
+            raw_updated_at: json.updated_at
+          });
+          throw new Error('Ошибка обработки дат отзыва');
         }
       })
 
-      logger.info('Получены отзывы для конкурса:', { 
-        contestId,
-        count: reviews.count 
-      })
-
       return {
-        reviews: formattedReviews,
-        total: reviews.count,
-        page: page,
-        totalPages: Math.ceil(reviews.count / limit)
+        reviews,
+        pagination: {
+          total: count,
+          page,
+          limit,
+          pages: Math.ceil(count / limit)
+        }
       }
     } catch (error) {
-      logger.error('Ошибка получения отзывов:', {
-        contestId,
-        error: error.message
-      })
+      logger.error('Error getting reviews:', error)
       throw error
     }
   }
 
   async addReview(contestId, userId, data) {
+    await this.ensureModels()
     try {
-      const review = await ContestReview.create({
-        contest_id: contestId,
-        user_id: userId,
-        ...data
+      contestId = contestId.toString()
+      userId = userId.toString()
+
+      // Проверяем, не оставлял ли пользователь уже отзыв
+      const existingReview = await this.models.ContestReview.findOne({
+        where: {
+          contest_id: contestId,
+          user_id: userId
+        }
       })
 
-      logger.info('Добавлен новый отзыв:', { 
-        contestId,
-        userId,
-        reviewId: review.id 
+      if (existingReview) {
+        throw new Error('Вы уже оставили отзыв для этого конкурса')
+      }
+
+      // Создаем отзыв
+      const review = await this.models.ContestReview.create({
+        contest_id: contestId,
+        user_id: userId,
+        rating: data.rating,
+        content: data.content,
+        created_at: new Date(),
+        updated_at: new Date()
       })
+
+      // Обновляем рейтинг конкурса
+      const stats = await contestStatsService.getStats(contestId)
+      const reviews = await this.models.ContestReview.findAll({
+        where: { contest_id: contestId },
+        attributes: ['rating']
+      })
+
+      const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0)
+      const averageRating = totalRating / reviews.length
+
+      await stats.update({ rating: averageRating })
 
       return review
     } catch (error) {
-      logger.error('Ошибка добавления отзыва:', {
-        contestId,
-        userId,
-        error: error.message
-      })
+      logger.error('Error adding review:', error)
       throw error
     }
   }
 
   async updateReview(reviewId, userId, data) {
+    await this.ensureModels()
     try {
-      const review = await ContestReview.findByPk(reviewId)
+      reviewId = reviewId.toString()
+      userId = userId.toString()
+
+      const review = await this.models.ContestReview.findOne({
+        where: {
+          id: reviewId,
+          user_id: userId
+        }
+      })
 
       if (!review) {
-        logger.warn('Отзыв не найден:', { reviewId })
-        throw new Error('REVIEW_NOT_FOUND')
+        throw new Error('Отзыв не найден или у вас нет прав на его редактирование')
       }
 
-      if (review.user_id !== userId) {
-        logger.warn('Отказано в доступе к отзыву:', { 
-          reviewId,
-          ownerId: review.user_id,
-          requesterId: userId 
-        })
-        throw new Error('ACCESS_DENIED')
-      }
+      // Обновляем отзыв
+      await review.update({
+        rating: data.rating,
+        content: data.content,
+        is_edited: true,
+        updated_at: new Date()
+      })
 
-      await review.update(data)
-      logger.info('Отзыв обновлен:', { reviewId })
+      // Обновляем рейтинг конкурса
+      const stats = await contestStatsService.getStats(review.contest_id)
+      const reviews = await this.models.ContestReview.findAll({
+        where: { contest_id: review.contest_id },
+        attributes: ['rating']
+      })
+
+      const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0)
+      const averageRating = totalRating / reviews.length
+
+      await stats.update({ rating: averageRating })
 
       return review
     } catch (error) {
-      logger.error('Ошибка обновления отзыва:', {
-        reviewId,
-        userId,
-        error: error.message
-      })
+      logger.error('Error updating review:', error)
       throw error
     }
   }
 
   async deleteReview(reviewId, userId) {
+    await this.ensureModels()
     try {
-      const review = await ContestReview.findOne({
-        where: { id: reviewId, user_id: userId }
+      reviewId = reviewId.toString()
+      userId = userId.toString()
+
+      const review = await this.models.ContestReview.findOne({
+        where: {
+          id: reviewId,
+          user_id: userId
+        }
       })
 
       if (!review) {
-        throw new Error('Отзыв не найден')
+        throw new Error('Отзыв не найден или у вас нет прав на его удаление')
       }
 
       const contestId = review.contest_id
+
+      // Удаляем отзыв
       await review.destroy()
 
-      // Пересчитываем средний рейтинг
-      const reviews = await ContestReview.findAll({
-        where: { contest_id: contestId }
+      // Обновляем рейтинг конкурса
+      const stats = await contestStatsService.getStats(contestId)
+      const reviews = await this.models.ContestReview.findAll({
+        where: { contest_id: contestId },
+        attributes: ['rating']
       })
 
-      let averageRating = 0
-      if (reviews.length > 0) {
-        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
-        averageRating = totalRating / reviews.length
-      }
+      const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0)
+      const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0
 
-      await contestStatsService.updateRating(contestId, averageRating)
+      await stats.update({ rating: averageRating })
 
       return contestId
     } catch (error) {
@@ -150,29 +270,36 @@ class ContestReviewService {
   }
 
   async toggleLike(reviewId, userId) {
+    await this.ensureModels()
     try {
-      const like = await ReviewLike.findOne({
-        where: { review_id: reviewId, user_id: userId }
+      reviewId = reviewId.toString()
+      userId = userId.toString()
+
+      const like = await this.models.ReviewLike.findOne({
+        where: {
+          review_id: reviewId,
+          user_id: userId
+        }
       })
 
       if (like) {
         await like.destroy()
-        logger.info('Лайк удален:', { reviewId, userId })
+        await this.models.ContestReview.decrement('likes_count', {
+          where: { id: reviewId }
+        })
         return false
       } else {
-        await ReviewLike.create({
+        await this.models.ReviewLike.create({
           review_id: reviewId,
           user_id: userId
         })
-        logger.info('Лайк добавлен:', { reviewId, userId })
+        await this.models.ContestReview.increment('likes_count', {
+          where: { id: reviewId }
+        })
         return true
       }
     } catch (error) {
-      logger.error('Ошибка при работе с лайками:', {
-        reviewId,
-        userId,
-        error: error.message
-      })
+      logger.error('Error toggling review like:', error)
       throw error
     }
   }

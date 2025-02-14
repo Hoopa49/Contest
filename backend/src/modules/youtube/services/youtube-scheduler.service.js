@@ -1,10 +1,10 @@
-const { youtube_settings: YoutubeSettings, youtube_channel: YoutubeChannel } = require('../../../models');
 const youtubeApi = require('./youtube-api.service');
 const contestProcessor = require('./contest-processor.service');
 const youtubeAnalytics = require('./youtube-analytics.service');
 const { logger } = require('../../../logging');
 const { Op } = require('sequelize');
 const cron = require('node-cron');
+const { initializeModels } = require('../../../models');
 
 class YoutubeSchedulerService {
   constructor() {
@@ -12,6 +12,28 @@ class YoutubeSchedulerService {
     this.searchInterval = null;
     this.channelInterval = null;
     this.analyticsInterval = null;
+    this.models = null;
+    this.initialized = false;
+  }
+
+  /**
+   * Инициализация сервиса
+   */
+  async initialize() {
+    try {
+      if (!this.initialized) {
+        this.models = await initializeModels();
+        if (!this.models) {
+          throw new Error('Не удалось инициализировать модели');
+        }
+        this.initialized = true;
+        logger.info('YouTube планировщик успешно инициализирован');
+      }
+      return true;
+    } catch (error) {
+      logger.error('Ошибка при инициализации YouTube планировщика:', error);
+      throw error;
+    }
   }
 
   /**
@@ -19,13 +41,20 @@ class YoutubeSchedulerService {
    */
   async loadSettings() {
     try {
-      this.settings = await YoutubeSettings.findOne();
-      if (!this.settings) {
-        throw new Error('Настройки YouTube API не найдены');
+      if (!this.initialized) {
+        await this.initialize();
       }
-      return this.settings;
+      
+      const settings = await this.models.YoutubeSettings.findOne();
+      if (!settings) {
+        logger.error('Настройки YouTube не найдены');
+        return null;
+      }
+      
+      this.settings = settings;
+      return settings;
     } catch (error) {
-      logger.error('Ошибка при загрузке настроек YouTube API:', error);
+      logger.error('Ошибка загрузки настроек YouTube:', error);
       throw error;
     }
   }
@@ -46,9 +75,15 @@ class YoutubeSchedulerService {
    */
   async searchNewVideos(customParams = null) {
     try {
-      const settings = await this.getSettings();
-      const keywords = ['конкурс', 'розыгрыш', 'giveaway'];
-      
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
+      const settings = await this.loadSettings();
+      if (!settings) {
+        throw new Error('Настройки YouTube не найдены');
+      }
+
       const searchParams = customParams || {
         maxResults: settings.max_results,
         region: settings.region,
@@ -63,25 +98,34 @@ class YoutubeSchedulerService {
         maxVideoAge: settings.max_video_age,
         contestProbabilityThreshold: settings.contest_probability_threshold
       };
-      
+
+      logger.info('Начат поиск видео с параметрами:', { searchParams });
+
+      const keywords = ['конкурс', 'розыгрыш', 'giveaway'];
       for (const keyword of keywords) {
-        const response = await youtubeApi.searchVideos(keyword, null, searchParams);
-        if (response && response.items) {
-          for (const item of response.items) {
-            await contestProcessor.processVideo(item.id.videoId, searchParams);
+        try {
+          const response = await youtubeApi.searchVideos(keyword, searchParams);
+          if (response?.items) {
+            for (const item of response.items) {
+              await contestProcessor.processVideo(item.id.videoId, searchParams);
+            }
           }
+        } catch (error) {
+          logger.error(`Ошибка при поиске по ключевому слову "${keyword}":`, error);
         }
       }
 
       // Обновляем время последней и следующей синхронизации
-      settings.last_sync = new Date();
-      settings.next_sync = new Date(Date.now() + settings.search_interval * 60 * 1000);
-      await settings.save();
+      if (settings) {
+        settings.last_sync = new Date();
+        settings.next_sync = new Date(Date.now() + settings.search_interval * 60 * 1000);
+        await settings.save();
+      }
 
-      logger.info('Поиск новых видео завершен');
+      logger.info('Поиск видео завершен');
     } catch (error) {
       logger.error('Ошибка при поиске новых видео:', error);
-      throw error; // Пробрасываем ошибку дальше для обработки в контроллере
+      throw error;
     }
   }
 
@@ -90,27 +134,37 @@ class YoutubeSchedulerService {
    */
   async checkChannels() {
     try {
-      const settings = await this.getSettings();
-      const channels = await YoutubeChannel.findAll({
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
+      const settings = await this.loadSettings();
+      if (!settings) {
+        throw new Error('Настройки не найдены');
+      }
+
+      const channels = await this.models.YoutubeChannel.findAll({
         where: {
-          contest_count: {
-            [Op.gte]: settings.min_contest_videos_for_channel
-          }
+          contest_channel: true,
+          status: 'active'
         }
       });
 
+      logger.info(`Начата проверка ${channels.length} каналов`);
+
       for (const channel of channels) {
-        const response = await youtubeApi.getChannelVideos(channel.channel_id);
-        if (response && response.items) {
-          for (const item of response.items) {
-            await contestProcessor.processVideo(item.id.videoId);
-          }
+        try {
+          const videos = await youtubeApi.getChannelVideos(channel.channel_id);
+          await contestProcessor.processChannelVideos(channel, videos);
+        } catch (error) {
+          logger.error(`Ошибка при обработке канала ${channel.channel_id}:`, error);
         }
       }
 
       logger.info('Проверка каналов завершена');
     } catch (error) {
       logger.error('Ошибка при проверке каналов:', error);
+      throw error;
     }
   }
 
@@ -137,7 +191,7 @@ class YoutubeSchedulerService {
       );
 
       // Запускаем планировщик обновления статистики
-      this.startAnalyticsScheduler();
+      await this.startAnalyticsScheduler();
 
       // Выполняем первый поиск сразу
       await this.searchNewVideos();
@@ -168,27 +222,34 @@ class YoutubeSchedulerService {
   /**
    * Запуск планировщика обновления статистики
    */
-  startAnalyticsScheduler() {
-    // Очищаем предыдущий интервал, если он был
-    if (this.analyticsInterval) {
-      clearInterval(this.analyticsInterval);
-    }
+  async startAnalyticsScheduler() {
+    try {
+      // Инициализируем сервис аналитики
+      await youtubeAnalytics.initialize();
 
-    // Обновляем статистику каждые 24 часа
-    this.analyticsInterval = setInterval(async () => {
-      try {
-        logger.info('Запуск обновления статистики YouTube');
-        await youtubeAnalytics.aggregateStats(new Date());
-        logger.info('Статистика YouTube успешно обновлена');
-      } catch (error) {
-        logger.error('Ошибка при обновлении статистики YouTube:', error);
+      // Очищаем предыдущий интервал, если он был
+      if (this.analyticsInterval) {
+        clearInterval(this.analyticsInterval);
       }
-    }, 24 * 60 * 60 * 1000); // 24 часа
 
-    // Запускаем первое обновление сразу
-    youtubeAnalytics.aggregateStats(new Date())
-      .then(() => logger.info('Начальное обновление статистики YouTube выполнено'))
-      .catch(error => logger.error('Ошибка при начальном обновлении статистики:', error));
+      // Обновляем статистику каждые 24 часа
+      this.analyticsInterval = setInterval(async () => {
+        try {
+          logger.info('Запуск обновления статистики YouTube');
+          await youtubeAnalytics.aggregateStats(new Date());
+          logger.info('Статистика YouTube успешно обновлена');
+        } catch (error) {
+          logger.error('Ошибка при обновлении статистики YouTube:', error);
+        }
+      }, 24 * 60 * 60 * 1000); // 24 часа
+
+      // Запускаем первое обновление сразу
+      await youtubeAnalytics.aggregateStats(new Date());
+      logger.info('Начальное обновление статистики YouTube выполнено');
+    } catch (error) {
+      logger.error('Ошибка при запуске планировщика аналитики:', error);
+      throw error;
+    }
   }
 }
 

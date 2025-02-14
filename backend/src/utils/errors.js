@@ -23,13 +23,20 @@ class ApiError extends Error {
   }
 }
 
+class ValidationError extends ApiError {
+  constructor(message = 'Ошибка валидации', details = null) {
+    super(message, 400, 'VALIDATION_ERROR', details);
+    this.name = 'ValidationError';
+  }
+}
+
 // Предопределенные типы ошибок
 const ErrorTypes = {
   NOT_FOUND: (message = 'Ресурс не найден', details = null) => 
     new ApiError(message, 404, 'NOT_FOUND', details),
     
   VALIDATION: (message = 'Ошибка валидации', details = null) => 
-    new ApiError(message, 400, 'VALIDATION_ERROR', details),
+    new ValidationError(message, details),
     
   AUTH: (message = 'Ошибка аутентификации', details = null) => 
     new ApiError(message, 401, 'AUTHENTICATION_ERROR', details),
@@ -103,6 +110,7 @@ const errorHandler = (err, req, res, next) => {
 
 module.exports = {
   ApiError,
+  ValidationError,
   ErrorTypes,
   catchAsync,
   errorHandler

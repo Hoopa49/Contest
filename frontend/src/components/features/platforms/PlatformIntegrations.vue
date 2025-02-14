@@ -530,8 +530,8 @@ export default {
       updateStats()
       refreshEvents()
       
-      // Обновляем статистику каждые 30 секунд
-      statsInterval = setInterval(updateStats, 30000)
+      // Обновляем статистику каждые 5 минут
+      statsInterval = setInterval(updateStats, 300000)
 
       // Добавляем слушатель события переключения интеграции
       window.addEventListener('integration-toggled', () => {

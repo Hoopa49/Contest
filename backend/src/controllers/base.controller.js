@@ -3,7 +3,7 @@
  * Содержит общие методы для обработки HTTP запросов и форматирования ответов
  */
 
-const { ApiError, ErrorTypes } = require('../utils/errors')
+const { ApiError, ErrorTypes, ValidationError } = require('../utils/errors')
 const logger = require('../logging')
 const ApiResponse = require('../utils/api-response')
 

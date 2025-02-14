@@ -99,28 +99,59 @@ router.get(
   createRouteHandler('getIntegrationStatus')
 );
 
-router.get(
-  '/admin/integrations/youtube/status',
-  ApiValidator.validate(youtubeSchemas.getIntegrationStatus),
-  createRouteHandler('getIntegrationStatus')
-);
-
 router.post(
-  '/admin/integrations/youtube/toggle',
+  '/toggle',
   ApiValidator.validate(youtubeSchemas.toggleIntegration),
   createRouteHandler('toggleIntegration')
 );
 
 router.get(
-  '/admin/integrations/youtube/settings',
+  '/settings',
   ApiValidator.validate(youtubeSchemas.getSettings),
   createRouteHandler('getSettings')
 );
 
 router.put(
-  '/admin/integrations/youtube/settings',
+  '/settings',
   ApiValidator.validate(youtubeSchemas.updateSettings),
   createRouteHandler('updateSettings')
+);
+
+// Определяем маршруты для конкурсов с валидацией
+router.get(
+  '/contest-analytics',
+  ApiValidator.validate(youtubeSchemas.getContestAnalytics),
+  createRouteHandler('getContestAnalytics')
+);
+
+router.post(
+  '/search/start',
+  ApiValidator.validate(youtubeSchemas.startVideoSearch),
+  createRouteHandler('startVideoSearch')
+);
+
+router.get(
+  '/contests/videos',
+  ApiValidator.validate(youtubeSchemas.getContestVideos),
+  createRouteHandler('getContestVideos')
+);
+
+router.get(
+  '/contests/channels',
+  ApiValidator.validate(youtubeSchemas.getContestChannels),
+  createRouteHandler('getContestChannels')
+);
+
+router.get(
+  '/stats',
+  ApiValidator.validate(youtubeSchemas.getStats),
+  createRouteHandler('getStats')
+);
+
+router.get(
+  '/stats/contests',
+  ApiValidator.validate(youtubeSchemas.getContestStats),
+  createRouteHandler('getContestStats')
 );
 
 // Определяем остальные маршруты с валидацией
@@ -143,39 +174,9 @@ router.get(
 );
 
 router.get(
-  '/api-stats',
+  '/stats/api',
   ApiValidator.validate(youtubeSchemas.getApiStats),
   createRouteHandler('getApiStats')
-);
-
-router.get(
-  '/contest-analytics',
-  ApiValidator.validate(youtubeSchemas.getContestAnalytics),
-  createRouteHandler('getContestAnalytics')
-);
-
-router.post(
-  '/search/start',
-  ApiValidator.validate(youtubeSchemas.startVideoSearch),
-  createRouteHandler('startVideoSearch')
-);
-
-router.get(
-  '/contest-videos',
-  ApiValidator.validate(youtubeSchemas.getContestVideos),
-  createRouteHandler('getContestVideos')
-);
-
-router.get(
-  '/contest-channels',
-  ApiValidator.validate(youtubeSchemas.getContestChannels),
-  createRouteHandler('getContestChannels')
-);
-
-router.get(
-  '/stats',
-  ApiValidator.validate(youtubeSchemas.getStats),
-  createRouteHandler('getStats')
 );
 
 // Применяем обработчик ошибок

@@ -1,94 +1,79 @@
-const { ContestComment, User } = require('../../../models')
+const { initializeModels } = require('../../../models')
 const { ApiError } = require('../../../utils/errors')
-const { logger } = require('../../../logging')
+const logger = require('../../../logging')
 
 class ContestCommentService {
+  constructor() {
+    this.models = null
+  }
+
+  async ensureModels() {
+    if (!this.models) {
+      this.models = await initializeModels()
+      if (!this.models) {
+        throw new Error('Не удалось инициализировать модели')
+      }
+    }
+  }
+
   /**
    * Получение комментариев конкурса
    */
   async getComments(contestId, page = 1, limit = 10) {
-    logger.info('Getting comments from service:', { contestId, page, limit })
+    await this.ensureModels()
+    try {
+      contestId = contestId.toString()
+      const offset = (page - 1) * limit
 
-    const offset = (page - 1) * limit
+      const { count, rows } = await this.models.ContestComment.findAndCountAll({
+        where: { contest_id: contestId },
+        include: [
+          {
+            model: this.models.User,
+            as: 'author',
+            attributes: ['id', 'username', 'avatar']
+          }
+        ],
+        limit,
+        offset,
+        order: [['created_at', 'DESC']]
+      })
 
-    // Получаем комментарии первого уровня (без родителя)
-    const { rows: comments, count: total } = await ContestComment.findAndCountAll({
-      where: {
-        contest_id: contestId,
-        parent_id: null
-      },
-      include: [
-        {
-          model: User,
-          as: 'author',
-          attributes: ['id', 'username', 'avatar']
-        },
-        {
-          model: ContestComment,
-          as: 'replies',
-          include: [
-            {
-              model: User,
-              as: 'author',
-              attributes: ['id', 'username', 'avatar']
-            }
-          ]
+      return {
+        comments: rows,
+        pagination: {
+          total: count,
+          page,
+          limit,
+          pages: Math.ceil(count / limit)
         }
-      ],
-      order: [['created_at', 'DESC']],
-      offset,
-      limit
-    })
-
-    const totalPages = Math.ceil(total / limit)
-
-    logger.info('Got comments:', { 
-      total,
-      commentsCount: comments.length,
-      totalPages
-    })
-
-    return {
-      comments,
-      page: parseInt(page),
-      totalPages,
-      total
+      }
+    } catch (error) {
+      logger.error('Error getting comments:', error)
+      throw error
     }
   }
 
   /**
    * Добавление комментария
    */
-  async addComment(contestId, userId, content, parentId = null) {
-    logger.info('Adding comment from service:', { 
-      contestId,
-      userId,
-      content,
-      parentId
-    })
+  async addComment(contestId, userId, content) {
+    await this.ensureModels()
+    try {
+      contestId = contestId.toString()
+      userId = userId.toString()
 
-    // Создаем комментарий
-    const comment = await ContestComment.create({
-      contest_id: contestId,
-      user_id: userId,
-      content,
-      parent_id: parentId
-    })
+      const comment = await this.models.ContestComment.create({
+        contest_id: contestId,
+        user_id: userId,
+        content
+      })
 
-    // Получаем комментарий с данными автора
-    const commentWithAuthor = await ContestComment.findByPk(comment.id, {
-      include: [
-        {
-          model: User,
-          as: 'author',
-          attributes: ['id', 'username', 'avatar']
-        }
-      ]
-    })
-
-    logger.info('Added comment:', { commentId: comment.id })
-
-    return commentWithAuthor
+      return comment
+    } catch (error) {
+      logger.error('Error adding comment:', error)
+      throw error
+    }
   }
 
   /**
@@ -103,7 +88,7 @@ class ContestCommentService {
     })
 
     // Проверяем существование родительского комментария
-    const parentComment = await ContestComment.findByPk(parentId)
+    const parentComment = await this.models.ContestComment.findByPk(parentId)
     if (!parentComment) {
       throw new ApiError(404, 'Родительский комментарий не найден')
     }
@@ -120,58 +105,60 @@ class ContestCommentService {
    * Обновление комментария
    */
   async updateComment(commentId, userId, content) {
-    logger.info('Updating comment from service:', {
-      commentId,
-      userId,
-      content
-    })
+    await this.ensureModels()
+    try {
+      commentId = commentId.toString()
+      userId = userId.toString()
 
-    const comment = await ContestComment.findByPk(commentId)
-    if (!comment) {
-      throw new ApiError(404, 'Комментарий не найден')
-    }
-
-    if (comment.user_id !== userId) {
-      throw new ApiError(403, 'Нет прав на редактирование комментария')
-    }
-
-    // Обновляем комментарий
-    await comment.update({ content })
-
-    // Получаем обновленный комментарий с данными автора
-    const updatedComment = await ContestComment.findByPk(commentId, {
-      include: [
-        {
-          model: User,
-          as: 'author',
-          attributes: ['id', 'username', 'avatar']
+      const comment = await this.models.ContestComment.findOne({
+        where: {
+          id: commentId,
+          user_id: userId
         }
-      ]
-    })
+      })
 
-    logger.info('Updated comment:', { commentId })
+      if (!comment) {
+        throw new Error('Комментарий не найден или у вас нет прав на его редактирование')
+      }
 
-    return updatedComment
+      await comment.update({
+        content,
+        is_edited: true
+      })
+
+      return comment
+    } catch (error) {
+      logger.error('Error updating comment:', error)
+      throw error
+    }
   }
 
   /**
    * Удаление комментария
    */
   async deleteComment(commentId, userId) {
-    logger.info('Deleting comment from service:', { commentId, userId })
+    await this.ensureModels()
+    try {
+      commentId = commentId.toString()
+      userId = userId.toString()
 
-    const comment = await ContestComment.findByPk(commentId)
-    if (!comment) {
-      throw new ApiError(404, 'Комментарий не найден')
+      const comment = await this.models.ContestComment.findOne({
+        where: {
+          id: commentId,
+          user_id: userId
+        }
+      })
+
+      if (!comment) {
+        throw new Error('Комментарий не найден или у вас нет прав на его удаление')
+      }
+
+      await comment.destroy()
+      return true
+    } catch (error) {
+      logger.error('Error deleting comment:', error)
+      throw error
     }
-
-    if (comment.user_id !== userId) {
-      throw new ApiError(403, 'Нет прав на удаление комментария')
-    }
-
-    await comment.destroy()
-
-    logger.info('Deleted comment:', { commentId })
   }
 }
 

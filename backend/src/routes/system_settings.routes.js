@@ -10,6 +10,9 @@ const { authMiddleware: isAuthenticated, adminMiddleware: isAdmin } = require('.
 // Получить все активные настройки
 router.get('/', isAuthenticated, systemSettingsController.getAllActive)
 
+// Получить историю изменений (только для админов)
+router.get('/history', isAuthenticated, isAdmin, systemSettingsController.getHistory)
+
 // Получить настройки по категории
 router.get('/:category', isAuthenticated, systemSettingsController.getByCategory)
 
@@ -18,5 +21,8 @@ router.put('/:category', isAuthenticated, isAdmin, systemSettingsController.upse
 
 // Деактивировать настройки (только для админов)
 router.delete('/:category', isAuthenticated, isAdmin, systemSettingsController.deactivate)
+
+// Откатить к предыдущей версии (только для админов)
+router.post('/rollback/:historyId', isAuthenticated, isAdmin, systemSettingsController.rollback)
 
 module.exports = router 

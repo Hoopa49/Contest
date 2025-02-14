@@ -9,15 +9,37 @@ const {
   youtube_video: YoutubeVideo, 
   youtube_channel: YoutubeChannel, 
   youtube_analytics: YoutubeAnalytics, 
-  youtube_settings: YoutubeSettings 
+  youtube_settings: YoutubeSettings,
+  initializeModels
 } = require('../../../models');
 const { Op } = require('sequelize');
 const { logger } = require('../../../logging');
 const youtubeApi = require('./youtube-api.service');
+const { quotaService } = require('./youtube-quota.service');
 
 class ContestProcessorService {
   constructor() {
-    this.settings = null
+    this.settings = null;
+    this.models = null;
+    this.initialized = false;
+  }
+
+  /**
+   * Инициализация сервиса
+   */
+  async initialize() {
+    try {
+      if (!this.initialized) {
+        this.models = await initializeModels();
+        this.initialized = true;
+        logger.info('ContestProcessor успешно инициализирован');
+      }
+      return true;
+    } catch (error) {
+      logger.error('Ошибка инициализации ContestProcessor:', error);
+      this.initialized = false;
+      throw error;
+    }
   }
 
   /**
@@ -25,14 +47,19 @@ class ContestProcessorService {
    */
   async loadSettings() {
     try {
-      this.settings = await YoutubeSettings.findOne()
-      if (!this.settings) {
-        throw new Error('Настройки YouTube API не найдены')
+      if (!this.initialized) {
+        await this.initialize();
       }
-      return this.settings
+      
+      this.settings = await this.models.YoutubeSettings.findOne();
+      if (!this.settings) {
+        logger.warn('Настройки YouTube не найдены');
+        return null;
+      }
+      return this.settings;
     } catch (error) {
-      logger.error('Ошибка при загрузке настроек YouTube API:', error)
-      throw error
+      logger.error('Ошибка загрузки настроек YouTube:', error);
+      throw error;
     }
   }
 
@@ -245,74 +272,101 @@ class ContestProcessorService {
    * @param {string} videoId - ID видео на YouTube
    * @param {Object} searchParams - Параметры поиска
    */
-  async processVideo(videoId) {
+  async processVideo(videoId, searchParams = null) {
     try {
-      // Проверяем, не обработано ли уже это видео
-      const existingVideo = await YoutubeVideo.findOne({
-        where: { youtube_id: videoId }
-      });
-
-      if (existingVideo) {
-        logger.info('Видео уже обработано:', { videoId });
-        return existingVideo;
+      if (!this.initialized) {
+        await this.initialize();
       }
 
-      // Получаем детали видео
-      const videoDetails = await this.youtubeApi.getVideoDetails(videoId);
+      // Проверяем доступность квоты
+      const canGetDetails = await quotaService.checkQuotaAvailability('VIDEO_DETAILS');
+      if (!canGetDetails) {
+        throw new Error('Превышен лимит квоты YouTube API для получения деталей видео');
+      }
 
+      // Получаем детали видео через API
+      const videoDetails = await youtubeApi.getVideoDetails(videoId);
       if (!videoDetails) {
-        logger.warn('Не удалось получить детали видео:', { videoId });
+        logger.warn('Видео не найдено:', { videoId });
         return null;
       }
 
-      // Анализируем видео на предмет конкурса
-      const { isContest, probability } = await this.analyzeVideo(videoDetails);
+      // Регистрируем использование квоты для получения деталей видео
+      await quotaService.registerQuotaUsage('VIDEO_DETAILS', 1);
 
-      // Получаем или создаем канал
-      const [channel] = await YoutubeChannel.findOrCreate({
+      // Создаем или обновляем канал
+      const [channel, channelCreated] = await this.models.YoutubeChannel.findOrCreate({
         where: { channel_id: videoDetails.snippet.channelId },
         defaults: {
+          channel_id: videoDetails.snippet.channelId,
           title: videoDetails.snippet.channelTitle,
+          last_checked: new Date(),
           status: 'active'
         }
       });
 
-      // Создаем запись о видео
-      const video = await YoutubeVideo.create({
-        youtube_id: videoId,
-        title: videoDetails.snippet.title,
-        description: videoDetails.snippet.description,
-        channel_id: channel.channel_id,
-        channel_title: channel.title,
-        publish_date: videoDetails.snippet.publishedAt,
-        views_count: parseInt(videoDetails.statistics.viewCount) || 0,
-        likes_count: parseInt(videoDetails.statistics.likeCount) || 0,
-        comments_count: parseInt(videoDetails.statistics.commentCount) || 0,
-        thumbnail_url: videoDetails.snippet.thumbnails.medium?.url || videoDetails.snippet.thumbnails.default?.url,
-        is_contest: isContest,
-        contest_probability: probability,
-        status: 'processed'
-      });
-
-      // Если это конкурс, обновляем статистику канала
-      if (isContest) {
-        await channel.increment('contest_videos_count');
-        if (channel.contest_videos_count >= 3) {
-          await channel.update({ contest_channel: true });
-        }
+      // Обновляем информацию о канале, если название изменилось
+      if (!channelCreated && channel.title !== videoDetails.snippet.channelTitle) {
+        await channel.update({
+          title: videoDetails.snippet.channelTitle,
+          last_checked: new Date()
+        });
       }
 
-      logger.info('Видео обработано:', { 
+      // Анализируем видео на признаки конкурса
+      const analysis = await this.analyzeVideoForContest(videoDetails, searchParams);
+
+      // Создаем или обновляем запись о видео
+      const [video, created] = await this.models.YoutubeVideo.findOrCreate({
+        where: { youtube_id: videoId },
+        defaults: {
+          youtube_id: videoId,
+          title: videoDetails.snippet.title,
+          description: videoDetails.snippet.description,
+          channel_id: videoDetails.snippet.channelId,
+          channel_title: videoDetails.snippet.channelTitle,
+          publish_date: videoDetails.snippet.publishedAt,
+          views_count: videoDetails.statistics.viewCount,
+          likes_count: videoDetails.statistics.likeCount,
+          comments_count: videoDetails.statistics.commentCount,
+          tags: videoDetails.snippet.tags || [],
+          is_contest: analysis.isContest,
+          contest_probability: analysis.probability,
+          prize_value: analysis.prizeValue || 0,
+          processed: true,
+          last_updated: new Date(),
+          status: 'processed'
+        }
+      });
+
+      // Если запись существует, обновляем её
+      if (!created) {
+        await video.update({
+          views_count: videoDetails.statistics.viewCount,
+          likes_count: videoDetails.statistics.likeCount,
+          comments_count: videoDetails.statistics.commentCount,
+          is_contest: analysis.isContest,
+          contest_probability: analysis.probability,
+          prize_value: analysis.prizeValue || 0,
+          processed: true,
+          last_updated: new Date(),
+          status: 'processed'
+        });
+      }
+
+      logger.info('Видео успешно обработано:', {
         videoId,
-        isContest,
-        probability 
+        channelId: videoDetails.snippet.channelId,
+        isContest: analysis.isContest,
+        probability: analysis.probability
       });
 
       return video;
     } catch (error) {
-      logger.error('Ошибка обработки видео:', {
+      logger.error('Ошибка при обработке видео:', {
         videoId,
-        error: error.message
+        error: error.message,
+        stack: error.stack
       });
       throw error;
     }

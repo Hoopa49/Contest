@@ -5,7 +5,6 @@ const logger = require('../logging')
 
 class ContestShareStats extends Model {
   static init(sequelize) {
-    
     super.init({
       id: {
         type: DataTypes.INTEGER,
@@ -22,14 +21,14 @@ class ContestShareStats extends Model {
         },
         onDelete: 'CASCADE'
       },
-      network: {
+      platform: {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
           isIn: [['VK', 'Telegram', 'WhatsApp', 'Instagram', 'X', 'Facebook']]
         }
       },
-      share_count: {
+      shares_count: {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0,
@@ -46,7 +45,7 @@ class ContestShareStats extends Model {
       indexes: [
         {
           unique: true,
-          fields: ['contest_id', 'network']
+          fields: ['contest_id', 'platform']
         }
       ]
     })
@@ -54,7 +53,6 @@ class ContestShareStats extends Model {
   }
 
   static associate(models) {
-
     this.belongsTo(models.Contest, {
       foreignKey: 'contest_id',
       as: 'contest'

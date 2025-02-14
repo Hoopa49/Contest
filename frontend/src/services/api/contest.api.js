@@ -350,7 +350,6 @@ class ContestAPI {
    */
   async getFavoriteContests() {
     try {
-      console.debug('Fetching favorite contests')
       
       const response = await http.get('/contests/favorites')
       

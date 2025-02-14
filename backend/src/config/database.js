@@ -7,12 +7,16 @@ require('dotenv').config()
 const { Sequelize } = require('sequelize')
 const logger = require('../logging')
 
+if (!process.env.POSTGRES_DB || !process.env.POSTGRES_USER || !process.env.POSTGRES_PASSWORD || !process.env.POSTGRES_HOST || !process.env.POSTGRES_PORT) {
+  throw new Error('Необходимые переменные окружения для подключения к базе данных не установлены')
+}
+
 const config = {
-  database: process.env.POSTGRES_DB || 'contest_db',
-  username: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: process.env.POSTGRES_PORT || 5432,
+  database: process.env.POSTGRES_DB,
+  username: process.env.POSTGRES_USER,
+  password: process.env.POSTGRES_PASSWORD,
+  host: process.env.POSTGRES_HOST,
+  port: process.env.POSTGRES_PORT,
   dialect: 'postgres',
   // Полностью отключаем вывод SQL запросов
   logging: false,

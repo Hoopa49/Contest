@@ -19,9 +19,6 @@ const router = Router()
 // Подключаем роуты
 router.use('/youtube', routes)
 
-// Инициализация планировщика при запуске
-youtubeScheduler.startScheduler()
-
 module.exports = {
   router,
   youtubeService,

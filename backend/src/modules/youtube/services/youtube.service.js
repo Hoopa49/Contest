@@ -5,38 +5,73 @@
 
 const { google } = require('googleapis')
 const { RateLimiter } = require('../../../utils/rate-limiter')
-const { DraftContest } = require('../../../models')
+const { initializeModels } = require('../../../models')
 const { logger } = require('../../../logging')
-const { 
-  youtube_video: YoutubeVideo,
-  youtube_channel: YoutubeChannel,
-  youtube_settings: YoutubeSettings
-} = require('../../../models')
 const { Op } = require('sequelize')
 const youtubeApi = require('./youtube-api.service')
 const contestProcessor = require('./contest-processor.service')
+const { quotaService } = require('./youtube-quota.service')
+const { Sequelize } = require('sequelize')
 
 class YouTubeService {
   constructor() {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) {
-      logger.error('API ключ YouTube не настроен в переменных окружения');
-      throw new Error('API ключ YouTube не настроен');
+    this.youtube = null;
+    this.rateLimiter = null;
+    this.initialized = false;
+    this.models = null;
+  }
+
+  async initialize() {
+    try {
+      const apiKey = process.env.YOUTUBE_API_KEY;
+      if (!apiKey) {
+        logger.warn('API ключ YouTube не настроен в переменных окружения');
+        return;
+      }
+
+      this.youtube = google.youtube({
+        version: 'v3',
+        auth: apiKey
+      });
+
+      this.rateLimiter = new RateLimiter('youtube', {
+        points: parseInt(process.env.YOUTUBE_QUOTA_LIMIT) || 10000,
+        duration: 24 * 60 * 60 // 24 часа в секундах
+      });
+
+      // Инициализируем модели
+      this.models = await initializeModels();
+      if (!this.models) {
+        throw new Error('Не удалось инициализировать модели');
+      }
+
+      this.initialized = true;
+      logger.info('YouTube сервис успешно инициализирован');
+    } catch (error) {
+      logger.error('Ошибка инициализации YouTube сервиса:', error);
+      throw error;
     }
+  }
 
-    this.youtube = google.youtube({
-      version: 'v3',
-      auth: apiKey
-    })
-
-    this.rateLimiter = new RateLimiter('youtube', {
-      points: parseInt(process.env.YOUTUBE_QUOTA_LIMIT) || 10000,
-      duration: 24 * 60 * 60 // 24 часа в секундах
-    })
+  async ensureInitialized() {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    if (!this.initialized) {
+      throw new Error('YouTube сервис не инициализирован');
+    }
   }
 
   async searchContests(query = '', options = {}) {
     try {
+      await this.ensureInitialized();
+
+      // Проверяем доступность квоты для поиска
+      const canSearch = await quotaService.checkQuotaAvailability('SEARCH');
+      if (!canSearch) {
+        throw new Error('Превышен лимит квоты YouTube API для поиска');
+      }
+
       const canProceed = await this.rateLimiter.checkLimit()
       if (!canProceed) {
         throw new Error('Превышен лимит запросов к API')
@@ -86,14 +121,23 @@ class YouTubeService {
         pageToken: options.pageToken
       }
 
-      const searchResponse = await this.youtube.search.list(searchParams)
+      // Регистрируем использование квоты для поиска (100 токенов за каждый запрос)
+      await quotaService.registerQuotaUsage('SEARCH', 1);
 
+      const searchResponse = await this.youtube.search.list(searchParams)
+      
       if (!searchResponse?.data?.items?.length) {
         return {
           videos: [],
           total: searchResponse?.data?.pageInfo?.totalResults || 0,
           nextPageToken: searchResponse?.data?.nextPageToken
         }
+      }
+
+      // Проверяем доступность квоты для получения деталей видео
+      const canGetDetails = await quotaService.checkQuotaAvailability('VIDEO_DETAILS');
+      if (!canGetDetails) {
+        throw new Error('Превышен лимит квоты YouTube API для получения деталей видео');
       }
 
       const canProceedVideos = await this.rateLimiter.checkLimit()
@@ -106,6 +150,8 @@ class YouTubeService {
         part: 'snippet,contentDetails,statistics',
         id: videoIds.join(',')
       })
+      // Регистрируем использование квоты для получения деталей видео
+      await quotaService.registerQuotaUsage('VIDEO_DETAILS', videoIds.length);
 
       if (!videosResponse?.data?.items?.length) {
         return {
@@ -223,29 +269,143 @@ class YouTubeService {
 
   async getChannelInfo(channelId) {
     try {
-      const canProceed = await this.rateLimiter.checkLimit()
-      if (!canProceed) {
-        throw new Error('Превышен лимит запросов к API')
+      await this.ensureInitialized();
+
+      // Проверяем доступность квоты
+      const canGetChannel = await quotaService.checkQuotaAvailability('CHANNEL_DETAILS');
+      if (!canGetChannel) {
+        throw new Error('Превышен лимит квоты YouTube API для получения информации о канале');
       }
 
       const response = await this.youtube.channels.list({
         part: 'snippet,statistics',
         id: channelId
-      })
+      });
+
+      // Регистрируем использование квоты
+      await quotaService.registerQuotaUsage('CHANNEL_DETAILS');
 
       if (!response?.data?.items?.length) {
-        throw new Error('Канал не найден')
+        return null;
       }
 
-      return response.data.items[0]
+      const channel = response.data.items[0];
+      return {
+        youtube_id: channel.id,
+        title: channel.snippet.title,
+        description: channel.snippet.description,
+        thumbnail_url: channel.snippet.thumbnails?.default?.url,
+        subscriber_count: parseInt(channel.statistics.subscriberCount) || 0,
+        video_count: parseInt(channel.statistics.videoCount) || 0,
+        view_count: parseInt(channel.statistics.viewCount) || 0
+      };
     } catch (error) {
-      logger.error('Ошибка при получении информации о канале:', error)
-      throw error
+      logger.error('Ошибка при получении информации о канале:', {
+        channelId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Получение статистики конкурсов
+   */
+  async getContestStats({ startDate, endDate }) {
+    try {
+      await this.ensureInitialized();
+
+      const where = {
+        is_contest: true
+      };
+
+      if (startDate) {
+        where.created_at = {
+          [Op.gte]: new Date(startDate)
+        };
+      }
+
+      if (endDate) {
+        where.created_at = {
+          ...where.created_at,
+          [Op.lte]: new Date(endDate)
+        };
+      }
+
+      // Получаем общее количество конкурсов
+      const total = await this.models.YoutubeVideo.count({
+        where: { is_contest: true }
+      });
+
+      // Получаем количество активных конкурсов (за последние 30 дней)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const active = await this.models.YoutubeVideo.count({
+        where: {
+          is_contest: true,
+          created_at: {
+            [Op.gte]: thirtyDaysAgo
+          }
+        }
+      });
+
+      // Получаем количество каналов с конкурсами
+      const channels = await this.models.YoutubeChannel.count({
+        where: {
+          contest_videos_count: {
+            [Op.gt]: 0
+          }
+        }
+      });
+
+      // Получаем ежедневную статистику
+      const dailyStats = await this.models.YoutubeVideo.findAll({
+        where: {
+          is_contest: true,
+          created_at: {
+            [Op.gte]: thirtyDaysAgo
+          }
+        },
+        attributes: [
+          [Sequelize.fn('DATE', Sequelize.col('created_at')), 'date'],
+          [Sequelize.fn('COUNT', Sequelize.col('id')), 'count'],
+          [Sequelize.fn('AVG', Sequelize.col('views_count')), 'avgViews'],
+          [Sequelize.fn('AVG', Sequelize.col('likes_count')), 'avgLikes'],
+          [Sequelize.fn('AVG', Sequelize.col('comments_count')), 'avgComments']
+        ],
+        group: [Sequelize.fn('DATE', Sequelize.col('created_at'))],
+        order: [[Sequelize.fn('DATE', Sequelize.col('created_at')), 'ASC']]
+      });
+
+      return {
+        total,
+        active,
+        channels,
+        dailyStats: dailyStats.map(stat => ({
+          date: stat.get('date'),
+          count: parseInt(stat.get('count')),
+          avgViews: Math.round(parseFloat(stat.get('avgViews')) || 0),
+          avgLikes: Math.round(parseFloat(stat.get('avgLikes')) || 0),
+          avgComments: Math.round(parseFloat(stat.get('avgComments')) || 0)
+        }))
+      };
+    } catch (error) {
+      logger.error('Ошибка при получении статистики конкурсов:', {
+        error: error.message,
+        stack: error.stack,
+        params: { startDate, endDate }
+      });
+      throw error;
     }
   }
 }
 
+// Создаем единственный экземпляр сервиса
+const youtubeService = new YouTubeService();
+
+// Экспортируем сервис
 module.exports = {
   YouTubeService,
-  youtubeService: new YouTubeService()
-} 
+  youtubeService
+}; 

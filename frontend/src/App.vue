@@ -99,11 +99,6 @@ export default {
         loadingDetails.value = 'Получение данных пользователя...'
         
         await authStore.init()
-        
-        console.debug('Инициализация успешна:', {
-          isAuthenticated: authStore.isAuthenticated,
-          user: authStore.user?.email
-        })
       } catch (err) {
         console.error('Ошибка при инициализации:', err)
         handleError(err)
@@ -124,7 +119,6 @@ export default {
         loadingMessage.value = 'Повторная инициализация'
         loadingDetails.value = 'Очистка состояния и повторная попытка...'
         
-        console.debug('Повторная попытка инициализации')
         await initializeApp()
       } finally {
         isRetrying.value = false
@@ -133,7 +127,6 @@ export default {
     
     // Запускаем инициализацию при монтировании
     onBeforeMount(() => {
-      console.debug('Запуск инициализации приложения')
       initializeApp()
     })
     

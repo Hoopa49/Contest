@@ -11,7 +11,6 @@ import { AuthError } from '@/utils/errors'
 
 // Создаем инстанс axios с базовым URL
 const baseURL = '/api'
-console.debug('API baseURL:', baseURL)
 
 const http = axios.create({
   baseURL,
@@ -52,16 +51,6 @@ http.interceptors.request.use(
       _t: Date.now()
     }
     
-    console.debug('Отправка запроса:', {
-      method: config.method,
-      url: config.url,
-      baseURL: config.baseURL,
-      fullPath: config.baseURL + config.url,
-      headers: config.headers,
-      params: config.params,
-      data: config.data,
-      withCredentials: config.withCredentials
-    })
     const token = tokenService.getAccessToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -81,19 +70,6 @@ http.interceptors.request.use(
 // Добавляем перехватчик ответов
 http.interceptors.response.use(
   response => {
-    console.debug('Успешный ответ:', {
-      url: response.config.url,
-      status: response.status,
-      statusText: response.statusText,
-      data: response.data,
-      headers: response.headers,
-      config: {
-        method: response.config.method,
-        baseURL: response.config.baseURL,
-        withCredentials: response.config.withCredentials,
-        headers: response.config.headers
-      }
-    })
     return response
   },
   async error => {

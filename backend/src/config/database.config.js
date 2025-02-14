@@ -1,23 +1,31 @@
 require('dotenv').config()
 
+if (!process.env.POSTGRES_DB || !process.env.POSTGRES_USER || !process.env.POSTGRES_PASSWORD || !process.env.POSTGRES_HOST || !process.env.POSTGRES_PORT) {
+  throw new Error('Необходимые переменные окружения для подключения к базе данных не установлены')
+}
+
 /**
  * Конфигурация базы данных
  * Настройки подключения к PostgreSQL для разных окружений
  */
 
+const baseConfig = {
+  username: process.env.POSTGRES_USER,
+  password: process.env.POSTGRES_PASSWORD,
+  database: process.env.POSTGRES_DB,
+  host: process.env.POSTGRES_HOST,
+  port: process.env.POSTGRES_PORT,
+  dialect: 'postgres',
+  logging: false,
+  define: {
+    timestamps: true,
+    underscored: true
+  }
+}
+
 module.exports = {
   development: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: 'postgres',
-    logging: false,
-    define: {
-      timestamps: true,
-      underscored: true
-    },
+    ...baseConfig,
     pool: {
       max: 5,
       min: 0,
@@ -26,30 +34,10 @@ module.exports = {
     }
   },
   test: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME_TEST,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: 'postgres',
-    logging: false,
-    define: {
-      timestamps: true,
-      underscored: true
-    }
+    ...baseConfig
   },
   production: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: 'postgres',
-    logging: false,
-    define: {
-      timestamps: true,
-      underscored: true
-    },
+    ...baseConfig,
     pool: {
       max: 10,
       min: 2,

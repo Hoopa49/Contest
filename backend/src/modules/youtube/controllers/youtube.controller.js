@@ -7,34 +7,36 @@ const BaseController = require('../../../controllers/base.controller');
 const { initializeModels } = require('../../../models');
 const youtubeApi = require('../services/youtube-api.service');
 const contestProcessor = require('../services/contest-processor.service');
-const quotaService = require('../services/youtube-quota.service');
+const { quotaService } = require('../services/youtube-quota.service');
 const scheduler = require('../services/youtube-scheduler.service');
 const { logger } = require('../../../logging');
 const { Op } = require('sequelize');
 const sequelize = require('sequelize');
-const { youtubeService } = require('../services/youtube.service');
+const youtubeService = require('../services/youtube.service').youtubeService;
 const youtubeAnalyticsService = require('../services/youtube-analytics.service');
 const { ApiError, ValidationError } = require('../../../utils/errors');
 
 class YoutubeController extends BaseController {
   constructor() {
     super(youtubeService);
-    this.quotaService = quotaService;
     this.youtubeApi = youtubeApi;
+    this.quotaService = quotaService;
     this.models = null;
     this.initialized = false;
-    this.initialize().catch(error => {
-      logger.error('Ошибка при инициализации YouTube контроллера:', {
-        error: error?.message,
-        stack: error?.stack
-      });
-    });
   }
 
   async initialize() {
     try {
       this.models = await initializeModels();
+      // Инициализируем YouTube сервис
+      await youtubeService.initialize();
+      // Инициализируем YouTube API
       await this.youtubeApi.initialize();
+      // Инициализируем сервис квот после инициализации моделей
+      await this.quotaService.loadSettings();
+      // Инициализируем планировщик, но не запускаем его
+      await scheduler.initialize();
+      
       this.initialized = true;
       logger.info('YouTube контроллер успешно инициализирован');
     } catch (error) {
@@ -43,7 +45,9 @@ class YoutubeController extends BaseController {
         stack: error?.stack,
         context: {
           modelsInitialized: !!this.models,
-          apiInitialized: this.youtubeApi?.initialized
+          apiInitialized: this.youtubeApi?.initialized,
+          serviceInitialized: youtubeService.initialized,
+          schedulerInitialized: scheduler?.initialized
         }
       });
       throw error;
@@ -62,7 +66,14 @@ class YoutubeController extends BaseController {
         }
 
         // Проверяем наличие всех необходимых моделей
-        const requiredModels = ['YoutubeSettings', 'IntegrationStats', 'Contest', 'User'];
+        const requiredModels = [
+          'YoutubeSettings', 
+          'IntegrationStats', 
+          'Contest', 
+          'User',
+          'YoutubeChannel',
+          'YoutubeVideo'
+        ];
         const missingModels = requiredModels.filter(modelName => !this.models[modelName]);
         
         if (missingModels.length > 0) {
@@ -202,7 +213,7 @@ class YoutubeController extends BaseController {
         throw new ApiError('Необходимо указать ID канала', 400);
       }
 
-      const channel = await youtubeApi.getChannelDetails(channelId);
+      const channel = await this.youtubeApi.getChannelDetails(channelId);
       
       if (!channel) {
         throw new ApiError('Канал не найден', 404);
@@ -229,8 +240,16 @@ class YoutubeController extends BaseController {
    */
   getApiStats = this.handleAsync(async (req, res) => {
     try {
+      if (!this.initialized) {
+        throw new ApiError('Контроллер YouTube не инициализирован', 503);
+      }
+      
+      await this.ensureModels();
+      if (!this.quotaService) {
+        throw new ApiError('Сервис квот не инициализирован', 500);
+      }
       const days = parseInt(req.query.days) || 30;
-      const stats = await this.quotaService.getQuotaStats(days);
+      const stats = await this.quotaService.getApiStats(days);
       logger.info('Получена статистика API:', { 
         metadata: { 
           days 
@@ -274,34 +293,30 @@ class YoutubeController extends BaseController {
    */
   startVideoSearch = this.handleAsync(async (req, res) => {
     try {
-      await this.ensureModels();
-      const settings = await this.models.YoutubeSettings.findOne();
-      if (!settings) {
-        throw new ApiError('Настройки не найдены', 404);
+      if (!this.initialized) {
+        throw new ApiError('YouTube контроллер не инициализирован', 503);
       }
 
-      const searchParams = {
-        maxResults: settings.max_results,
-        region: settings.region,
-        language: settings.language,
-        videoOrder: settings.video_order,
-        videoDuration: settings.video_duration,
-        videoDefinition: settings.video_definition,
-        videoType: settings.video_type,
-        minSubscriberCount: settings.min_subscriber_count,
-        minViewCount: settings.min_view_count,
-        minVideoAge: settings.min_video_age,
-        maxVideoAge: settings.max_video_age,
-        contestProbabilityThreshold: settings.contest_probability_threshold
-      };
+      if (!scheduler.initialized) {
+        await scheduler.initialize();
+      }
 
+      const searchParams = req.body;
       await scheduler.searchNewVideos(searchParams);
-      return this.sendSuccess(res, { message: 'Поиск запущен' });
+      
+      return this.sendSuccess(res, { 
+        message: 'Поиск запущен',
+        status: 'success'
+      });
     } catch (error) {
       logger.error('Ошибка запуска поиска видео:', {
         metadata: {
           error: error.message,
-          stack: error.stack
+          stack: error.stack,
+          context: {
+            controllerInitialized: this.initialized,
+            schedulerInitialized: scheduler?.initialized
+          }
         }
       });
       if (error instanceof ApiError) {
@@ -317,34 +332,25 @@ class YoutubeController extends BaseController {
   getContestVideos = this.handleAsync(async (req, res) => {
     try {
       await this.ensureModels();
-      const { page = 1, limit = 10, status = 'all' } = req.query;
+      const { page = 1, limit = 10 } = req.query;
       const offset = (page - 1) * limit;
 
-      const where = {
-        is_contest: true
-      };
-
-      if (status !== 'all') {
-        where.contest_status = status;
-      }
-
-      const videos = await this.models.youtube_video.findAndCountAll({
-        where,
+      const videos = await this.models.YoutubeVideo.findAndCountAll({
+        where: {
+          is_contest: true,
+          status: 'processed',
+          contest_status: 'active'
+        },
         limit,
         offset,
-        order: [['publish_date', 'DESC']],
-        include: [{
-          model: this.models.youtube_channel,
-          as: 'channel'
-        }]
+        order: [['publish_date', 'DESC']]
       });
 
       logger.debug('Получены конкурсные видео:', {
         metadata: {
           total: videos.count,
           page: parseInt(page),
-          limit: parseInt(limit),
-          status
+          limit: parseInt(limit)
         }
       });
 
@@ -375,7 +381,7 @@ class YoutubeController extends BaseController {
       const { page = 1, limit = 10 } = req.query;
       const offset = (page - 1) * limit;
 
-      const channels = await this.models.youtube_channel.findAndCountAll({
+      const channels = await this.models.YoutubeChannel.findAndCountAll({
         where: {
           contest_channel: true,
           status: 'active'
@@ -454,6 +460,37 @@ class YoutubeController extends BaseController {
         }
       });
       throw new ApiError('Ошибка получения статистики YouTube', 500, error);
+    }
+  });
+
+  /**
+   * Получение статистики конкурсов
+   */
+  getContestStats = this.handleAsync(async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      // Получаем статистику из сервиса
+      const stats = await youtubeService.getContestStats({
+        startDate,
+        endDate
+      });
+
+      return this.sendSuccess(res, {
+        total: stats.total,
+        active: stats.active,
+        channels: stats.channels,
+        dailyStats: stats.dailyStats
+      }, 'Статистика конкурсов получена успешно');
+    } catch (error) {
+      logger.error('Ошибка получения статистики конкурсов:', {
+        metadata: {
+          error: error.message,
+          stack: error.stack,
+          query: req.query
+        }
+      });
+      return this.sendError(res, error);
     }
   });
 
@@ -600,14 +637,28 @@ class YoutubeController extends BaseController {
 
       if (enabled) {
         settings.next_sync = new Date(Date.now() + settings.search_interval * 60000);
+        // Если включаем интеграцию, инициализируем планировщик
+        if (!scheduler.initialized) {
+          await scheduler.initialize();
+        }
       } else {
         settings.next_sync = null;
+        // Если выключаем интеграцию, останавливаем планировщик
+        scheduler.stopAll();
       }
       
       await Promise.all([
         settings.save(),
         integrationStats.save()
       ]);
+
+      // Создаем запись в истории изменений
+      await this.models.SystemSettingsHistory.create({
+        setting_key: 'youtube_integration',
+        old_value: !enabled,
+        new_value: enabled,
+        changed_by: req.user?.id || 'system'
+      });
 
       return this.sendSuccess(res, { 
         enabled: settings.enabled,
@@ -788,7 +839,9 @@ module.exports = {
   controller,
   initialize: async () => {
     try {
-      await controller.initialize();
+      if (!controller.initialized) {
+        await controller.initialize();
+      }
       return controller;
     } catch (err) {
       logger.error('Ошибка инициализации контроллера YouTube:', {

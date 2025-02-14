@@ -174,10 +174,10 @@ class User extends Model {
       as: 'notificationSettings'
     })
 
-    // Связь с логами
-    this.hasMany(models.Log, {
+    // Связь с активностью интеграций
+    this.hasMany(models.IntegrationActivity, {
       foreignKey: 'user_id',
-      as: 'logs'
+      as: 'integrationActivities'
     })
   }
 }
