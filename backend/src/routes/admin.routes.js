@@ -32,9 +32,10 @@ router.get('/recent-actions', adminController.getRecentActions.bind(adminControl
 router.get('/activity', adminController.getIntegrationActivity.bind(adminController))
 
 // Маршруты для аналитики
-router.get('/analytics', analyticsController.getLatestAnalytics.bind(analyticsController))
-router.get('/analytics/:category', analyticsController.getAnalyticsByCategory.bind(analyticsController))
+router.get('/analytics/dashboard', analyticsController.getDashboardAnalytics.bind(analyticsController))
 router.get('/analytics/:category/metrics', analyticsController.aggregateMetrics.bind(analyticsController))
+router.get('/analytics/forecasts', analyticsController.getForecasts.bind(analyticsController))
+router.get('/analytics/recommendations', analyticsController.getRecommendations.bind(analyticsController))
 
 // Получение списка пользователей
 router.get('/users', adminController.getUsers.bind(adminController))

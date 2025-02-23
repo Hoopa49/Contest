@@ -25,9 +25,12 @@
           </v-img>
 
           <v-card-title class="d-flex align-center">
-            <v-avatar size="64" class="mr-4">
-              <v-img :src="platform.logo" :alt="platform.name"></v-img>
-            </v-avatar>
+            <UserAvatar
+              :src="platform.logo"
+              :name="platform.name"
+              size="64"
+              class="mr-4"
+            />
             <div>
               <div class="text-h5">{{ platform.name }}</div>
               <div class="text-subtitle-1 text-grey">{{ platform.category }}</div>
@@ -306,11 +309,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePlatformStore } from '@/stores/platform'
 import Chart from 'chart.js/auto'
 import ContestReviews from '@/components/features/contests/details/social/reviews/ContestReviews.vue'
+import UserAvatar from '@/components/common/UserAvatar.vue'
 
 export default {
   name: 'PlatformDetails',
   components: {
-    ContestReviews
+    ContestReviews,
+    UserAvatar
   },
   
   setup() {
@@ -586,13 +591,13 @@ export default {
 }
 
 .platform-banner::after {
-  content: '';
   position: absolute;
+  right: 0;
   bottom: 0;
   left: 0;
-  right: 0;
   height: 50%;
-  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.5));
+  background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 50%));
+  content: '';
 }
 
 .v-rating {
@@ -604,7 +609,7 @@ export default {
 }
 
 .v-list-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgb(255 255 255 / 5%);
 }
 
 .v-rating .v-icon {

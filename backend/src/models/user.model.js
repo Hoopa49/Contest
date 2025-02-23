@@ -18,19 +18,21 @@ class User extends Model {
         },
         email: {
           type: DataTypes.STRING,
-          allowNull: false,
+          allowNull: true,
           unique: true,
           validate: {
             isEmail: {
               msg: 'Некорректный email адрес'
             },
-            notNull: {
-              msg: 'Email обязателен для заполнения'
+            emailRequiredForLocal() {
+              if (this.auth_provider === 'local' && !this.email) {
+                throw new Error('Email обязателен для локальной авторизации')
+              }
             }
           }
         },
         telegram_id: {
-          type: DataTypes.STRING,
+          type: DataTypes.BIGINT,
           allowNull: true,
           unique: true
         },

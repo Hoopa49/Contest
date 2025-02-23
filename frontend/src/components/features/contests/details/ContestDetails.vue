@@ -494,7 +494,7 @@ watch(
   top: 24px;
 }
 
-@media (max-width: 960px) {
+@media (width <= 960px) {
   .sticky-sidebar {
     position: static;
   }

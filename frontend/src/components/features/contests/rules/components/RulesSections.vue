@@ -302,7 +302,7 @@ const toggleAll = () => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .section-content {
     font-size: 0.875rem;
   }

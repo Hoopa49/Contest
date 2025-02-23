@@ -225,7 +225,7 @@ const handleParticipateClick = () => {
   box-shadow: none !important;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .contest-actions {
     padding: 12px 0;
   }

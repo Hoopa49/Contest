@@ -226,7 +226,7 @@ const getPrizeIcon = (index) => {
   background: transparent !important;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .prize-card,
   .additional-prize {
     margin-bottom: 16px;

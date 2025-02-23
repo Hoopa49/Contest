@@ -1,0 +1,61 @@
+@use "../abstracts/variables" as *;
+
+.v-theme--light {
+  // Основные цвета
+  --primary-base: rgb(var(--v-theme-primary));
+  --primary-hover: rgb(var(--v-theme-primary-darken-1));
+  --primary-light: rgba(var(--v-theme-primary), 0.8);
+
+  // Фоны
+  --background-main: rgb(var(--v-theme-background));
+  --background-form: rgb(var(--v-theme-surface));
+  --background-input: rgb(var(--v-theme-surface));
+  --background-secondary: rgb(var(--v-theme-surface-variant));
+
+  // Текст
+  --text-primary: rgba(var(--v-theme-on-background), var(--v-high-emphasis-opacity));
+  --text-secondary: rgba(var(--v-theme-on-background), var(--v-medium-emphasis-opacity));
+  --text-placeholder: rgba(var(--v-theme-on-background), var(--v-disabled-opacity));
+  --text-light: rgb(var(--v-theme-on-primary));
+
+  // Границы
+  --border-base: rgba(var(--v-theme-on-surface), var(--v-border-opacity));
+  --border-focus: rgb(var(--v-theme-primary));
+
+  // Тени
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 10%);
+  --shadow-md: 0 4px 6px rgb(0 0 0 / 10%);
+  --shadow-lg: 0 10px 15px rgb(0 0 0 / 10%);
+  --shadow-form: 0 4px 6px rgba(var(--v-theme-primary), 0.1);
+  --shadow-input-focus: 0 0 0 3px rgba(var(--v-theme-primary), 0.1);
+
+  // Градиенты
+  --gradient-primary: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-primary-darken-1)) 100%);
+  --gradient-banner: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-primary-darken-1)) 50%, rgb(var(--v-theme-primary)) 100%);
+  --gradient-overlay: linear-gradient(rgb(255 255 255 / 10%), rgb(255 255 255 / 5%));
+
+  // Состояния
+  --state-hover: rgba(var(--v-theme-primary), var(--v-hover-opacity));
+  --state-focus: rgba(var(--v-theme-primary), var(--v-focus-opacity));
+  --state-selected: rgba(var(--v-theme-primary), var(--v-selected-opacity));
+  --state-disabled: rgba(var(--v-theme-on-surface), var(--v-disabled-opacity));
+
+  // Компоненты
+  .v-overlay__scrim {
+    background: var(--background-main);
+  }
+
+  .v-card,
+  .v-sheet,
+  .v-list,
+  .v-table,
+  .v-field,
+  .v-btn:not(.v-btn--flat, .v-btn--text),
+  .v-expansion-panel,
+  .v-navigation-drawer,
+  .v-menu,
+  .v-dialog {
+    background-color: var(--background-main);
+    color: var(--text-primary);
+  }
+}

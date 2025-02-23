@@ -331,9 +331,9 @@ const confirmRemove = () => {
 
 .favorite-card {
   position: relative;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 .favorite-image {
@@ -368,7 +368,7 @@ const confirmRemove = () => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .favorites-grid {
     grid-template-columns: 1fr;
     gap: 16px;

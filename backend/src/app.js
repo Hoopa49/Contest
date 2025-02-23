@@ -75,14 +75,31 @@ const initApp = async () => {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use(cors(corsOptions));
-    app.use(helmet());
+    app.use(helmet({
+      crossOriginResourcePolicy: false,
+      crossOriginOpenerPolicy: false
+    }));
     app.use(cookieParser());
     app.use(compression());
 
     // Middleware для логирования и безопасности
-    app.use(correlationMiddleware);     // 1. Добавляем correlation ID
-    app.use(authContextMiddleware);     // 2. Добавляем контекст аутентификации
-    app.use(httpLoggerMiddleware);      // 3. Логируем HTTP запросы/ответы
+    app.use(correlationMiddleware);
+    app.use(authContextMiddleware);
+    app.use(httpLoggerMiddleware);
+
+    // Логирование всех запросов
+    app.use((req, res, next) => {
+      logger.debug('Входящий запрос:', {
+        method: req.method,
+        url: req.url,
+        originalUrl: req.originalUrl,
+        path: req.path,
+        headers: req.headers,
+        query: req.query,
+        body: req.body
+      });
+      next();
+    });
 
     // Аутентификация
     app.use(async (req, res, next) => {
@@ -126,6 +143,21 @@ const initApp = async () => {
 
     // API маршруты
     app.use('/api', routes);
+    app.use('/', routes); // Добавляем обработку маршрутов без префикса /api
+
+    // Обработка 404
+    app.use((req, res) => {
+      logger.warn('Маршрут не найден:', {
+        method: req.method,
+        url: req.url,
+        originalUrl: req.originalUrl,
+        headers: req.headers
+      });
+      res.status(404).json({
+        success: false,
+        message: `Маршрут ${req.originalUrl} не найден`
+      });
+    });
 
     // Обработка ошибок
     app.use(errorLoggerMiddleware);

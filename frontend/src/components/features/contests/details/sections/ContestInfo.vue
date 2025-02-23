@@ -262,10 +262,10 @@ watch(
 .info-item {
   display: flex;
   align-items: flex-start;
-  padding: 8px;
   height: 100%;
-  border-radius: 8px;
+  padding: 8px;
   transition: background-color 0.2s;
+  border-radius: 8px;
 }
 
 .info-item:hover {

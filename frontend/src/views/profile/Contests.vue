@@ -133,25 +133,12 @@
                       class="mb-2 contest-item"
                     >
                       <template v-slot:prepend>
-                        <v-avatar size="40" class="mr-3">
-                          <v-img 
-                            :src="contest.image || '/contest-placeholder.png'" 
-                            :alt="contest.title"
-                            error-src="/contest-placeholder.png"
-                            loading="lazy"
-                            class="contest-image"
-                          >
-                            <template v-slot:placeholder>
-                              <div class="d-flex align-center justify-center fill-height">
-                                <v-progress-circular
-                                  color="grey-lighten-4"
-                                  indeterminate
-                                  size="20"
-                                ></v-progress-circular>
-                              </div>
-                            </template>
-                          </v-img>
-                        </v-avatar>
+                        <UserAvatar
+                          :src="contest.organizer.avatar"
+                          :name="contest.organizer.name"
+                          size="40"
+                          class="mr-3"
+                        />
                         <v-chip
                           :color="getStatusColor(contest.status)"
                           size="small"
@@ -342,25 +329,12 @@
                       class="mb-2 history-item"
                     >
                       <template v-slot:prepend>
-                        <v-avatar size="40" class="mr-3">
-                          <v-img 
-                            :src="entry.contest.image || '/contest-placeholder.png'" 
-                            :alt="entry.contest.title"
-                            error-src="/contest-placeholder.png"
-                            loading="lazy"
-                            class="contest-image"
-                          >
-                            <template v-slot:placeholder>
-                              <div class="d-flex align-center justify-center fill-height">
-                                <v-progress-circular
-                                  color="grey-lighten-4"
-                                  indeterminate
-                                  size="20"
-                                ></v-progress-circular>
-                              </div>
-                            </template>
-                          </v-img>
-                        </v-avatar>
+                        <UserAvatar
+                          :src="entry.contest.organizer.avatar"
+                          :name="entry.contest.organizer.name"
+                          size="40"
+                          class="mr-3"
+                        />
                         <v-chip
                           :color="getParticipationStatusColor(entry.status)"
                           size="small"
@@ -464,9 +438,14 @@ import { useContestsStore } from '@/stores/contests'
 import { useRouter } from 'vue-router'
 import { useError } from '@/composables/useError'
 import { useAuthStore } from '@/stores/auth'
+import UserAvatar from '@/components/common/UserAvatar.vue'
 
 export default {
   name: 'UserContests',
+  
+  components: {
+    UserAvatar
+  },
   
   setup() {
     const contestStore = useContestsStore()
@@ -829,8 +808,8 @@ export default {
 }
 
 .contest-item {
-  transition: all 0.3s ease;
   border: 1px solid transparent;
+  transition: all 0.3s ease;
 }
 
 .contest-item:hover {
@@ -886,7 +865,7 @@ export default {
 
 /* Стили для статусов */
 .status-draft {
-  border: 1px dashed currentColor;
+  border: 1px dashed currentcolor;
 }
 
 .status-active {
@@ -921,7 +900,7 @@ export default {
   margin: 0 auto;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .gap-4 {
     gap: 0.5rem;
   }
@@ -966,8 +945,8 @@ export default {
 }
 
 .history-item {
-  transition: all 0.3s ease;
   border: 1px solid transparent;
+  transition: all 0.3s ease;
 }
 
 .history-item:hover {

@@ -2044,7 +2044,7 @@ defineOptions({
 }
 
 .v-list-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgb(255 255 255 / 5%);
 }
 
 .rating-large {
@@ -2052,8 +2052,8 @@ defineOptions({
 }
 
 .rating-large .v-icon {
-  padding: 0;
   margin: 0 4px;
+  padding: 0;
 }
 
 .v-rating {
@@ -2061,8 +2061,8 @@ defineOptions({
 }
 
 .v-rating .v-icon {
-  padding: 0;
   margin: 0 2px;
+  padding: 0;
 }
 
 /* Стили для текста отзыва */

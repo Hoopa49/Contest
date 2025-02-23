@@ -6,21 +6,33 @@
         <v-icon start>mdi-view-dashboard</v-icon>
         Дашборд
       </v-tab>
+      <v-tab value="analytics">
+        <v-icon start>mdi-chart-bar</v-icon>
+        Аналитика
+      </v-tab>
       <v-tab value="users">
         <v-icon start>mdi-account-group</v-icon>
         Пользователи
+      </v-tab>
+      <v-tab value="contests">
+        <v-icon start>mdi-trophy</v-icon>
+        Конкурсы
       </v-tab>
       <v-tab value="integrations">
         <v-icon start>mdi-connection</v-icon>
         Интеграции
       </v-tab>
+      <v-tab value="notifications">
+        <v-icon start>mdi-bell</v-icon>
+        Уведомления
+      </v-tab>
       <v-tab value="system-settings">
         <v-icon start>mdi-cog-box</v-icon>
-        Системные настройки
+        Настройки
       </v-tab>
-      <v-tab value="logs">
-        <v-icon start>mdi-text-box-search</v-icon>
-        Логи
+      <v-tab value="ui-kit">
+        <v-icon start>mdi-palette</v-icon>
+        UI Kit
       </v-tab>
     </v-tabs>
 
@@ -52,14 +64,23 @@ export default {
         case 'users':
           router.push({ name: 'admin-users' })
           break
+        case 'contests':
+          router.push({ name: 'admin-contests' })
+          break
         case 'integrations':
           router.push({ name: 'admin-integrations' })
+          break
+        case 'notifications':
+          router.push({ name: 'admin-notifications' })
           break
         case 'system-settings':
           router.push({ name: 'admin-system-settings' })
           break
-        case 'logs':
-          router.push({ name: 'admin-logs' })
+        case 'analytics':
+          router.push({ name: 'admin-analytics' })
+          break
+        case 'ui-kit':
+          router.push({ name: 'admin-ui-kit' })
           break
       }
     }

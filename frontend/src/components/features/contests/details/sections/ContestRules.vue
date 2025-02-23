@@ -224,7 +224,7 @@ const hasImportantRules = computed(() => {
   margin-right: 16px;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   :deep(.v-list-item) {
     padding: 4px 8px;
   }

@@ -226,7 +226,7 @@ onMounted(() => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .contest-prizes {
     padding: 16px;
   }

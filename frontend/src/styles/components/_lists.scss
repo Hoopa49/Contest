@@ -1,0 +1,135 @@
+@use '../abstracts/variables' as *;
+@use '../abstracts/mixins' as *;
+
+.list {
+  @include custom-scrollbar;
+  
+  // Базовые стили
+  &__item {
+    @include flex(row, space-between, center);
+    @include transition(background-color);
+    
+    padding: 1rem;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--background-secondary);
+    }
+
+    &--selected {
+      background-color: var(--background-selected);
+    }
+  }
+
+  // Варианты
+  &--bordered {
+    border: 1px solid var(--border-base);
+    border-radius: var(--border-radius-base);
+
+    .list__item {
+      border-bottom: 1px solid var(--border-base);
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+  }
+
+  &--divided {
+    .list__item {
+      border-bottom: 1px solid var(--border-base);
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+  }
+
+  // Контент
+  &__content {
+    @include flex(column, center, flex-start);
+
+    flex: 1;
+    min-width: 0;
+    margin-right: 1rem;
+  }
+
+  &__title {
+    @include text-ellipsis;
+
+    width: 100%;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  &__subtitle {
+    @include text-ellipsis;
+
+    width: 100%;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  // Иконки и метаданные
+  &__icon {
+    @include flex(row, center, center);
+
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  &__meta {
+    @include flex(row, flex-end, center);
+
+    flex-shrink: 0;
+    gap: 0.5rem;
+  }
+
+  // Действия
+  &__actions {
+    @include flex(row, flex-end, center);
+
+    gap: 0.5rem;
+    margin-left: 1rem;
+  }
+
+  // Статусы
+  .status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+
+    &--active {
+      background-color: var(--success-light);
+      color: var(--success-base);
+    }
+
+    &--paused {
+      background-color: var(--warning-light);
+      color: var(--warning-base);
+    }
+
+    &--completed {
+      background-color: var(--info-light);
+      color: var(--info-base);
+    }
+  }
+
+  // Аватары
+  .avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  // Роли
+  .role-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.75rem;
+    background-color: var(--background-secondary);
+    color: var(--text-secondary);
+  }
+}

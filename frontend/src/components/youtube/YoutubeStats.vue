@@ -231,10 +231,10 @@ onMounted(() => {
 }
 
 .v-card-text {
-  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  height: 100%;
 }
 
 .text-h4 {

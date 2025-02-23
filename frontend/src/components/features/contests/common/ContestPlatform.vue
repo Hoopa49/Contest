@@ -23,10 +23,10 @@
 <script>
 import { computed } from 'vue'
 import { getPlatformInfo } from '@/utils/platforms'
-import YouTubeIcon from '@/components/icons/YouTubeIcon.vue'
-import InstagramIcon from '@/components/icons/InstagramIcon.vue'
-import TelegramIcon from '@/components/icons/TelegramIcon.vue'
-import VKIcon from '@/components/icons/VKIcon.vue'
+import YouTubeIcon from '@/components/ui/icons/YouTubeIcon.vue'
+import InstagramIcon from '@/components/ui/icons/InstagramIcon.vue'
+import TelegramIcon from '@/components/ui/icons/TelegramIcon.vue'
+import VKIcon from '@/components/ui/icons/VKIcon.vue'
 
 export default {
   name: 'ContestPlatform',

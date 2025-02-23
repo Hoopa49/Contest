@@ -271,7 +271,7 @@ const cancel = () => {
 
 /* Анимация для полей ввода */
 :deep(.v-field--focused) {
-  transform: scale(1.01);
   transition: transform 0.2s ease;
+  transform: scale(1.01);
 }
 </style> 

@@ -186,7 +186,7 @@ const formatDetails = (details) => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .restriction-item {
     padding: 12px;
   }

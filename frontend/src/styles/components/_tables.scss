@@ -1,0 +1,163 @@
+@use '../abstracts/variables' as *;
+@use '../abstracts/mixins' as *;
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--background-form);
+  border-radius: var(--border-radius-base);
+  overflow: hidden;
+
+  // Заголовок таблицы
+  &__header {
+    @include flex(row, space-between, center);
+
+    padding: 1rem;
+    background-color: var(--background-secondary);
+  }
+
+  // Основная таблица
+  &__main {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  // Заголовки столбцов
+  &__th {
+    @include flex(row, flex-start, center);
+
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: var(--background-secondary);
+    text-align: left;
+    cursor: default;
+
+    &--sortable {
+      cursor: pointer;
+      user-select: none;
+
+      &:hover {
+        background-color: var(--background-tertiary);
+      }
+    }
+
+    &--sorted {
+      color: var(--primary-base);
+    }
+  }
+
+  // Ячейки
+  &__td {
+    padding: 0.75rem 1rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-base);
+  }
+
+  // Строки
+  &__tr {
+    @include transition(background-color);
+
+    &:hover {
+      background-color: var(--background-hover);
+    }
+
+    &--selected {
+      background-color: var(--background-selected);
+
+      &:hover {
+        background-color: var(--background-selected-hover);
+      }
+    }
+  }
+
+  // Чекбокс для выбора
+  &__checkbox {
+    width: 1.5rem;
+    padding-right: 0;
+  }
+
+  // Сортировка
+  &__sort-icon {
+    margin-left: 0.5rem;
+    width: 1rem;
+    height: 1rem;
+    transition: transform 0.2s ease;
+
+    &--desc {
+      transform: rotate(180deg);
+    }
+  }
+
+  // Пагинация
+  &__pagination {
+    @include flex(row, space-between, center);
+
+    padding: 1rem;
+    background-color: var(--background-secondary);
+    border-top: 1px solid var(--border-base);
+  }
+
+  &__pagination-info {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  &__pagination-controls {
+    @include flex(row, center, center);
+
+    gap: 0.5rem;
+  }
+
+  // Действия
+  &__actions {
+    @include flex(row, flex-end, center);
+
+    gap: 0.5rem;
+  }
+
+  // Пустое состояние
+  &__empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+  }
+
+  // Загрузка
+  &__loading {
+    @include flex(row, center, center);
+
+    padding: 2rem;
+    color: var(--text-secondary);
+  }
+
+  // Статусы
+  .status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+
+    &--success {
+      background-color: var(--success-light);
+      color: var(--success-base);
+    }
+
+    &--warning {
+      background-color: var(--warning-light);
+      color: var(--warning-base);
+    }
+
+    &--error {
+      background-color: var(--error-light);
+      color: var(--error-base);
+    }
+
+    &--info {
+      background-color: var(--info-light);
+      color: var(--info-base);
+    }
+  }
+}

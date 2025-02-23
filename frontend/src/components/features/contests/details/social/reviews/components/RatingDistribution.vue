@@ -114,10 +114,10 @@ const getRatingColor = (rating) => {
 }
 
 .rating-value {
-  min-width: 40px;
   display: flex;
-  align-items: center;
   justify-content: flex-start;
+  align-items: center;
+  min-width: 40px;
 }
 
 .progress-text {
@@ -130,7 +130,7 @@ const getRatingColor = (rating) => {
 
 /* Анимация при наведении */
 .rating-bar:hover .v-progress-linear {
-  transform: scaleY(1.2);
   transition: transform 0.2s ease;
+  transform: scaleY(1.2);
 }
 </style> 

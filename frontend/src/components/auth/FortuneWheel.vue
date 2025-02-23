@@ -134,10 +134,10 @@ export default {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 10;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 10;
 }
 
 /* Темная тема */

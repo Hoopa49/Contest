@@ -1,0 +1,134 @@
+@use '../abstracts/variables' as *;
+@use '../abstracts/mixins' as *;
+@use '../abstracts/functions' as *;
+
+.toast {
+  @include flex(row, flex-start, flex-start);
+  @include shadow('md');
+  
+  position: relative;
+  min-width: 300px;
+  max-width: 400px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--border-radius-base);
+  background-color: var(--background-form);
+  overflow: hidden;
+
+  // Анимации
+  &-enter-active,
+  &-leave-active {
+    transition: all 0.3s ease;
+  }
+
+  &-enter-from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  &-leave-to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  // Варианты
+  &--info {
+    border-left: 4px solid var(--info-base);
+
+    .toast__icon {
+      color: var(--info-base);
+    }
+  }
+
+  &--success {
+    border-left: 4px solid var(--success-base);
+
+    .toast__icon {
+      color: var(--success-base);
+    }
+  }
+
+  &--warning {
+    border-left: 4px solid var(--warning-base);
+
+    .toast__icon {
+      color: var(--warning-base);
+    }
+  }
+
+  &--error {
+    border-left: 4px solid var(--error-base);
+
+    .toast__icon {
+      color: var(--error-base);
+    }
+  }
+
+  // Иконка
+  &__icon {
+    @include flex(row, center, center);
+
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  // Контент
+  &__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    @include text-ellipsis;
+
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  &__message {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  // Кнопка закрытия
+  &__close {
+    @include flex(row, center, center);
+
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+    opacity: 0.6;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  // Прогресс-бар
+  &__progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background-color: var(--primary-base);
+    transition: width 0.1s linear;
+  }
+}
+
+// Контейнер для уведомлений
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: z-index('toast');
+}

@@ -2,10 +2,10 @@
  * Сервис для работы с аналитическими данными
  */
 
-const BaseService = require('./base.service')
-const logger = require('../logging')
-const { ValidationError } = require('../utils/errors')
 const { Op, Sequelize } = require('sequelize')
+const logger = require('../logging')
+const BaseService = require('./base.service')
+const { ValidationError } = require('../utils/errors')
 const { AnalyticsData } = require('../models')
 
 class AnalyticsService extends BaseService {
@@ -14,10 +14,38 @@ class AnalyticsService extends BaseService {
   }
 
   async init(models) {
-    await super.init(models)
-    this.User = this.models.User
-    this.Contest = this.models.Contest
-    this.IntegrationActivities = this.models.IntegrationActivities
+    try {
+      logger.info('Начало инициализации AnalyticsService')
+      
+      await super.init(models)
+      
+      // Проверяем наличие необходимых моделей
+      const requiredModels = ['User', 'Contest', 'IntegrationActivity']
+      const missingModels = requiredModels.filter(model => !models[model])
+      
+      if (missingModels.length > 0) {
+        logger.error('Отсутствуют необходимые модели:', { missingModels })
+        throw new Error(`Отсутствуют модели: ${missingModels.join(', ')}`)
+      }
+
+      this.User = this.models.User
+      this.Contest = this.models.Contest
+      this.IntegrationActivities = this.models.IntegrationActivity
+
+      logger.info('AnalyticsService успешно инициализирован', {
+        models: {
+          User: !!this.User,
+          Contest: !!this.Contest,
+          IntegrationActivities: !!this.IntegrationActivities
+        }
+      })
+    } catch (error) {
+      logger.error('Ошибка при инициализации AnalyticsService:', {
+        error: error.message,
+        stack: error.stack
+      })
+      throw error
+    }
   }
 
   /**
@@ -367,6 +395,253 @@ class AnalyticsService extends BaseService {
       logger.error('Error in getAnalytics:', error)
       throw error
     }
+  }
+
+  /**
+   * Получить данные активности пользователей для графика
+   */
+  async getUserActivity(period, chartType) {
+    this.checkModel()
+
+    const now = new Date()
+    let startDate = new Date()
+    
+    // Определяем период
+    switch (period) {
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7)
+        break
+      case 'month':
+        startDate.setMonth(startDate.getMonth() - 1)
+        break
+      case 'quarter':
+        startDate.setMonth(startDate.getMonth() - 3)
+        break
+      case 'year':
+        startDate.setFullYear(startDate.getFullYear() - 1)
+        break
+      default:
+        startDate.setMonth(startDate.getMonth() - 1) // По умолчанию месяц
+    }
+
+    // Маппинг типов графиков на единицы измерения PostgreSQL
+    const chartTypeMap = {
+      daily: 'day',
+      weekly: 'week',
+      monthly: 'month'
+    }
+
+    const dbChartType = chartTypeMap[chartType] || 'day'
+
+    // Получаем данные из разных источников
+    const [userStats, activityStats] = await Promise.all([
+      this.User.findAll({
+        attributes: [
+          [Sequelize.fn('COUNT', Sequelize.col('id')), 'total_users'],
+          [Sequelize.fn('SUM', Sequelize.literal("CASE WHEN is_active = true THEN 1 ELSE 0 END")), 'active_users'],
+          [Sequelize.fn('date_trunc', dbChartType, Sequelize.col('created_at')), 'date']
+        ],
+        where: {
+          created_at: {
+            [Op.between]: [startDate, now]
+          }
+        },
+        group: [Sequelize.fn('date_trunc', dbChartType, Sequelize.col('created_at'))],
+        order: [[Sequelize.fn('date_trunc', dbChartType, Sequelize.col('created_at')), 'ASC']]
+      }),
+      this.model.findAll({
+        where: {
+          category: 'activity',
+          date: {
+            [Op.between]: [startDate, now]
+          }
+        },
+        order: [['date', 'ASC']]
+      })
+    ])
+
+    // Форматируем данные для графика
+    const dates = userStats.map(stat => stat.get('date').toISOString().split('T')[0])
+    const activeUsers = userStats.map(stat => parseInt(stat.get('active_users')))
+    const newRegistrations = userStats.map(stat => parseInt(stat.get('total_users')))
+    const conversion = userStats.map((stat, index) => {
+      const total = parseInt(stat.get('total_users'))
+      const active = parseInt(stat.get('active_users'))
+      return total > 0 ? Math.round((active / total) * 100) : 0
+    })
+
+    return {
+      dates,
+      activeUsers,
+      newRegistrations,
+      conversion
+    }
+  }
+
+  /**
+   * Получить распределение по платформам
+   */
+  async getPlatformDistribution() {
+    this.checkModel()
+
+    try {
+      logger.info('Начало получения распределения платформ')
+      
+      // Проверяем инициализацию модели
+      if (!this.IntegrationActivities) {
+        logger.error('Модель IntegrationActivities не инициализирована')
+        return []
+      }
+
+      // Получаем статистику по интеграциям
+      const stats = await this.IntegrationActivities.findAll({
+        attributes: [
+          'platform',
+          [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
+        ],
+        where: {
+          created_at: {
+            [Sequelize.Op.gte]: Sequelize.literal('NOW() - INTERVAL \'30 days\'')
+          },
+          status: 'success' // Учитываем только успешные действия
+        },
+        group: ['platform'],
+        order: [[Sequelize.fn('COUNT', Sequelize.col('id')), 'DESC']]
+      })
+
+      logger.info('Получены данные распределения платформ:', {
+        count: stats.length,
+        platforms: stats.map(s => s.get('platform'))
+      })
+
+      // Форматируем данные для графика
+      const result = stats.map(stat => ({
+        name: stat.get('platform'),
+        value: parseInt(stat.get('count'))
+      }))
+
+      logger.info('Форматированные данные:', { result })
+
+      return result
+    } catch (error) {
+      logger.error('Ошибка при получении распределения платформ:', {
+        error: error.message,
+        stack: error.stack
+      })
+      return [] // Возвращаем пустой массив в случае ошибки
+    }
+  }
+
+  /**
+   * Получить прогнозы роста
+   */
+  async getForecasts(period) {
+    this.checkModel()
+
+    const now = new Date()
+    let startDate = new Date()
+    
+    switch (period) {
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7)
+        break
+      case 'month':
+        startDate.setMonth(startDate.getMonth() - 1)
+        break
+      case 'quarter':
+        startDate.setMonth(startDate.getMonth() - 3)
+        break
+      case 'year':
+        startDate.setFullYear(startDate.getFullYear() - 1)
+        break
+      default:
+        startDate.setMonth(startDate.getMonth() - 1)
+    }
+
+    // Получаем статистику роста
+    const [userGrowth, contestGrowth, conversionChange, activityGrowth] = await Promise.all([
+      this.calculateGrowth('users', startDate, now),
+      this.calculateGrowth('contests', startDate, now),
+      this.calculateGrowth('conversion', startDate, now),
+      this.calculateGrowth('activity', startDate, now)
+    ])
+
+    return [
+      { title: 'Рост пользователей (30 дней)', trend: userGrowth },
+      { title: 'Рост конкурсов (30 дней)', trend: contestGrowth },
+      { title: 'Изменение конверсии', trend: conversionChange },
+      { title: 'Рост активности', trend: activityGrowth }
+    ]
+  }
+
+  /**
+   * Получить рекомендации
+   */
+  async getRecommendations() {
+    this.checkModel()
+
+    // Получаем последние метрики
+    const [userStats, conversionStats, activityStats] = await Promise.all([
+      this.getAnalyticsByCategory('users', null, null),
+      this.getAnalyticsByCategory('conversion', null, null),
+      this.getAnalyticsByCategory('activity', null, null)
+    ])
+
+    const recommendations = []
+
+    // Анализируем конверсию
+    if (conversionStats.length > 0) {
+      const latestConversion = conversionStats[0].metrics.user_conversion
+      if (latestConversion < 50) {
+        recommendations.push({
+          title: 'Оптимизация конверсии',
+          description: `Наблюдается низкая конверсия (${latestConversion}%). Рекомендуется проанализировать воронку участия.`,
+          priority: 'error'
+        })
+      }
+    }
+
+    // Анализируем рост пользователей
+    if (userStats.length > 1) {
+      const growth = ((userStats[0].metrics.total - userStats[1].metrics.total) / userStats[1].metrics.total) * 100
+      if (growth > 10) {
+        recommendations.push({
+          title: 'Потенциал роста',
+          description: `Высокий рост пользователей (+${Math.round(growth)}%) указывает на возможность масштабирования.`,
+          priority: 'success'
+        })
+      }
+    }
+
+    // Анализируем активность
+    if (activityStats.length > 0) {
+      const latestActivity = activityStats[0].metrics.total
+      if (latestActivity > 1000) {
+        recommendations.push({
+          title: 'Активность пользователей',
+          description: 'Высокий уровень активности - хороший показатель вовлеченности.',
+          priority: 'info'
+        })
+      }
+    }
+
+    return recommendations
+  }
+
+  /**
+   * Вспомогательный метод для расчета роста
+   */
+  async calculateGrowth(category, startDate, endDate) {
+    const stats = await this.getAnalyticsByCategory(category, startDate, endDate)
+    
+    if (stats.length < 2) {
+      return 0
+    }
+
+    const latest = stats[0].metrics.total || 0
+    const previous = stats[stats.length - 1].metrics.total || 1 // Избегаем деления на 0
+
+    return Math.round(((latest - previous) / previous) * 100)
   }
 }
 

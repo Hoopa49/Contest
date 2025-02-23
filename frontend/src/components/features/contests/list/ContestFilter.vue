@@ -406,7 +406,7 @@ watch(() => props.prizeRange, (value) => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .contest-filter {
     padding: 1rem;
   }

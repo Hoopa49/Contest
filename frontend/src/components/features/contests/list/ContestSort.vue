@@ -187,7 +187,7 @@ watch(() => props.modelValue, updateFromModelValue, { immediate: true })
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .contest-sort {
     padding: 1rem;
   }

@@ -111,7 +111,7 @@ const hint = computed(() => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .progress-text {
     font-size: 0.75rem;
   }

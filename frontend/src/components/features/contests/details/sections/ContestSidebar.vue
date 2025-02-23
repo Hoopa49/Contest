@@ -6,24 +6,28 @@
   - Требования и ограничения
 -->
 <template>
-  <div class="sidebar-container">
+  <v-navigation-drawer
+    location="right"
+    width="320"
+    permanent
+    elevation="2"
+    class="contest-sidebar"
+  >
     <!-- Организатор -->
-    <v-card class="mb-4">
-      <v-card-title class="d-flex align-center">
+    <v-card class="mb-4 mx-4 mt-4" elevation="0">
+      <v-card-title class="d-flex align-center px-4">
         <v-icon start>mdi-account-tie</v-icon>
         Организатор
       </v-card-title>
 
-      <v-card-text>
+      <v-card-text class="px-4">
         <div class="d-flex align-center">
-          <v-avatar
-            :image="organizer.avatar"
-            :alt="organizer.name"
+          <UserAvatar
+            :src="organizer.avatar"
+            :name="organizer.name"
             size="48"
             class="mr-3"
-          >
-            <v-icon v-if="!organizer.avatar">mdi-account</v-icon>
-          </v-avatar>
+          />
 
           <div>
             <div class="text-subtitle-1 font-weight-medium">
@@ -62,7 +66,7 @@
           {{ organizer.description }}
         </div>
 
-        <v-list v-if="organizer.stats" density="compact" class="mt-2">
+        <v-list v-if="organizer.stats" density="compact" class="mt-2 pa-0">
           <v-list-item
             v-for="(value, key) in organizer.stats"
             :key="key"
@@ -78,13 +82,13 @@
     </v-card>
 
     <!-- Таймер -->
-    <v-card class="mb-4">
-      <v-card-title class="d-flex align-center">
+    <v-card class="mb-4 mx-4" elevation="0">
+      <v-card-title class="d-flex align-center px-4">
         <v-icon start>mdi-clock-outline</v-icon>
         {{ timerTitle }}
       </v-card-title>
 
-      <v-card-text>
+      <v-card-text class="px-4">
         <div class="timer-container">
           <div class="timer-block">
             <div class="timer-value">{{ timeLeft.days }}</div>
@@ -109,19 +113,19 @@
     </v-card>
 
     <!-- Требования -->
-    <v-card>
-      <v-card-title class="d-flex align-center">
+    <v-card class="mx-4" elevation="0">
+      <v-card-title class="d-flex align-center px-4">
         <v-icon start>mdi-clipboard-list</v-icon>
         Требования
       </v-card-title>
 
-      <v-card-text>
-        <v-list density="compact">
+      <v-card-text class="px-4">
+        <v-list density="compact" class="pa-0">
           <v-list-item
             v-for="(req, index) in requirements"
             :key="index"
             :class="{ 'text-error': req.required && !req.fulfilled }"
-            class="requirement-item"
+            class="requirement-item px-0"
           >
             <template v-slot:prepend>
               <v-icon
@@ -148,13 +152,14 @@
         </v-list>
       </v-card-text>
     </v-card>
-  </div>
+  </v-navigation-drawer>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { formatDate } from '@/utils/formatters'
 import { RequirementStatus } from '@/constants/contest'
+import UserAvatar from '@/components/common/UserAvatar.vue'
 
 // Props с типизацией
 const props = defineProps({
@@ -248,25 +253,24 @@ const getStatIcon = (key) => {
 
 const getStatLabel = (key) => {
   const labels = {
-    contests: 'Конкурсов проведено',
-    participants: 'Всего участников',
-    rating: 'Средний рейтинг',
-    reviews: 'Отзывов получено'
+    contests: 'Конкурсов',
+    participants: 'Участников',
+    rating: 'Рейтинг',
+    reviews: 'Отзывов'
   }
   return labels[key] || key
 }
 
-const getRequirementColor = (req) => {
-  if (!req.status || req.status === RequirementStatus.NOT_CHECKED) return 'grey'
-  return req.status === RequirementStatus.FULFILLED ? 'success' : 'error'
+const getRequirementIcon = (req) => {
+  if (req.status === RequirementStatus.FULFILLED) return 'mdi-check-circle'
+  if (req.status === RequirementStatus.PENDING) return 'mdi-clock-outline'
+  return 'mdi-alert-circle'
 }
 
-const getRequirementIcon = (req) => {
-  if (!req.status || req.status === RequirementStatus.NOT_CHECKED) {
-    return 'mdi-circle-outline'
-  }
-  return req.status === RequirementStatus.FULFILLED ? 
-    'mdi-check-circle' : 'mdi-close-circle'
+const getRequirementColor = (req) => {
+  if (req.status === RequirementStatus.FULFILLED) return 'success'
+  if (req.status === RequirementStatus.PENDING) return 'warning'
+  return 'error'
 }
 
 // Жизненный цикл
@@ -283,17 +287,16 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.sidebar-container {
-  position: sticky;
-  top: 24px;
+.contest-sidebar {
+  border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
 .timer-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .timer-block {
@@ -302,43 +305,34 @@ onUnmounted(() => {
 }
 
 .timer-value {
-  font-size: 24px;
-  font-weight: bold;
-  line-height: 1;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgb(var(--v-theme-primary));
 }
 
 .timer-label {
-  font-size: 12px;
-  color: rgb(var(--v-theme-on-surface));
-  opacity: 0.6;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
 }
 
 .timer-divider {
-  font-size: 24px;
-  font-weight: bold;
-  line-height: 1;
-  margin-top: -8px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  margin-top: -0.5rem;
 }
 
 .requirement-item {
-  padding: 12px 0;
+  margin-bottom: 0.5rem;
 }
 
 .requirement-text {
-  white-space: normal;
-  word-wrap: break-word;
-  line-height: 1.5;
-  padding-right: 8px;
+  line-height: 1.4;
 }
 
 .requirement-content {
   flex: 1;
   min-width: 0;
-}
-
-@media (max-width: 960px) {
-  .sidebar-container {
-    position: static;
-  }
 }
 </style> 

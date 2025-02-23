@@ -122,31 +122,35 @@
       <v-spacer />
       <v-tooltip location="top" text="Добавить в избранное">
         <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            variant="text"
+          <UiButton
+            variant="ghost"
+            size="small"
             v-bind="props"
-            :color="contest.is_favorite ? 'warning' : undefined"
+            :class="{ 'text-warning': contest.is_favorite }"
             :disabled="loading"
             @click.stop="$emit('toggle-favorite')"
           >
-            <v-icon>
-              {{ contest.is_favorite ? 'mdi-star' : 'mdi-star-outline' }}
-            </v-icon>
-          </v-btn>
+            <template #icon>
+              <v-icon>
+                {{ contest.is_favorite ? 'mdi-star' : 'mdi-star-outline' }}
+              </v-icon>
+            </template>
+          </UiButton>
         </template>
       </v-tooltip>
       <v-tooltip location="top" text="Поделиться">
         <template v-slot:activator="{ props }">
-          <v-btn
-            icon
-            variant="text"
+          <UiButton
+            variant="ghost"
+            size="small"
             v-bind="props"
             :disabled="loading"
             @click.stop="$emit('share')"
           >
-            <v-icon>mdi-share-variant</v-icon>
-          </v-btn>
+            <template #icon>
+              <v-icon>mdi-share-variant</v-icon>
+            </template>
+          </UiButton>
         </template>
       </v-tooltip>
     </v-card-actions>
@@ -156,10 +160,11 @@
 <script setup>
 import { formatDate, formatPrize } from '@/utils/formatters'
 import { getStatusText } from '@/utils/constants'
-import YouTubeIcon from '@/components/icons/YouTubeIcon.vue'
-import InstagramIcon from '@/components/icons/InstagramIcon.vue'
-import TelegramIcon from '@/components/icons/TelegramIcon.vue'
-import VKIcon from '@/components/icons/VKIcon.vue'
+import YouTubeIcon from '@/components/ui/icons/YouTubeIcon.vue'
+import InstagramIcon from '@/components/ui/icons/InstagramIcon.vue'
+import TelegramIcon from '@/components/ui/icons/TelegramIcon.vue'
+import VKIcon from '@/components/ui/icons/VKIcon.vue'
+import UiButton from '@/components/ui/buttons/UiButton.vue'
 
 // Props
 const props = defineProps({
@@ -239,19 +244,19 @@ const getParticipantsText = (count) => {
 
 <style scoped>
 .contest-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
+  height: 100%;
   background-color: var(--v-theme-surface);
 }
 
 .contest-image {
   position: relative;
-  background-color: var(--v-theme-surface);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   padding: 8px;
+  background-color: var(--v-theme-surface);
   min-height: 200px;
 }
 

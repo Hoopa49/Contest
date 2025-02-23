@@ -105,9 +105,12 @@
             <v-form ref="profileForm" v-model="formValid">
               <!-- Аватар -->
               <div class="d-flex align-center mb-6">
-                <v-avatar size="100" class="mr-4">
-                  <v-img :src="avatar || '/default-avatar.png'" alt="Аватар"></v-img>
-                </v-avatar>
+                <UserAvatar
+                  :src="avatar"
+                  :name="user.name"
+                  size="100"
+                  class="mr-4"
+                />
                 <div>
                   <v-file-input
                     v-model="newAvatar"
@@ -215,9 +218,14 @@
 <script>
 import { ref, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
+import UserAvatar from '@/components/common/UserAvatar.vue'
 
 export default {
   name: 'ProfileOverview',
+
+  components: {
+    UserAvatar
+  },
 
   setup() {
     const userStore = useUserStore()

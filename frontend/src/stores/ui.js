@@ -4,77 +4,101 @@
  */
 
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 
-export const useUiStore = defineStore('ui', {
-  state: () => ({
-    theme: localStorage.getItem('theme') || 'light',
-    sidebarOpen: false,
-    modal: {
+export const useUiStore = defineStore('ui', () => {
+  // Состояние
+  const isDarkTheme = ref(false)
+  const sidebarOpen = ref(false)
+  const modal = ref({
+    isOpen: false,
+    component: null,
+    props: {}
+  })
+  const toast = ref({
+    show: false,
+    message: '',
+    type: 'info',
+    duration: 3000
+  })
+
+  // Методы
+  const toggleTheme = () => {
+    isDarkTheme.value = !isDarkTheme.value
+    document.documentElement.setAttribute('data-theme', isDarkTheme.value ? 'dark' : 'light')
+    localStorage.setItem('theme', isDarkTheme.value ? 'dark' : 'light')
+  }
+
+  const toggleSidebar = () => {
+    sidebarOpen.value = !sidebarOpen.value
+  }
+
+  const setSidebar = (isOpen) => {
+    sidebarOpen.value = isOpen
+  }
+
+  const openModal = ({ component, props = {} }) => {
+    modal.value = {
+      isOpen: true,
+      component,
+      props
+    }
+  }
+
+  const closeModal = () => {
+    modal.value = {
       isOpen: false,
       component: null,
       props: {}
-    },
-    toast: {
-      show: false,
-      message: '',
-      type: 'info',
-      duration: 3000
     }
-  }),
+  }
 
-  getters: {
-    isDarkTheme: (state) => state.theme === 'dark',
-    isSidebarOpen: (state) => state.sidebarOpen,
-    getModal: (state) => state.modal,
-    getToast: (state) => state.toast
-  },
-
-  actions: {
-    toggleTheme() {
-      this.theme = this.theme === 'light' ? 'dark' : 'light'
-      localStorage.setItem('theme', this.theme)
-    },
-
-    toggleSidebar() {
-      this.sidebarOpen = !this.sidebarOpen
-    },
-
-    setSidebar(isOpen) {
-      this.sidebarOpen = isOpen
-    },
-
-    openModal({ component, props = {} }) {
-      this.modal = {
-        isOpen: true,
-        component,
-        props
-      }
-    },
-
-    closeModal() {
-      this.modal = {
-        isOpen: false,
-        component: null,
-        props: {}
-      }
-    },
-
-    showToast({ message, type = 'info', duration = 3000 }) {
-      this.toast = {
-        show: true,
-        message,
-        type,
-        duration
-      }
-
-      setTimeout(() => {
-        this.hideToast()
-      }, duration)
-    },
-
-    hideToast() {
-      this.toast.show = false
-      this.toast.message = ''
+  const showToast = ({ message, type = 'info', duration = 3000 }) => {
+    toast.value = {
+      show: true,
+      message,
+      type,
+      duration
     }
+
+    setTimeout(() => {
+      hideToast()
+    }, duration)
+  }
+
+  const hideToast = () => {
+    toast.value.show = false
+    toast.value.message = ''
+  }
+
+  // Инициализация темы
+  const initTheme = () => {
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme) {
+      isDarkTheme.value = savedTheme === 'dark'
+    } else {
+      isDarkTheme.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+    }
+    document.documentElement.setAttribute('data-theme', isDarkTheme.value ? 'dark' : 'light')
+  }
+
+  // Вызываем инициализацию при создании store
+  initTheme()
+
+  return {
+    // Состояние
+    isDarkTheme,
+    sidebarOpen,
+    modal,
+    toast,
+
+    // Методы
+    toggleTheme,
+    toggleSidebar,
+    setSidebar,
+    openModal,
+    closeModal,
+    showToast,
+    hideToast
   }
 }) 

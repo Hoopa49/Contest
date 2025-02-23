@@ -243,7 +243,7 @@ const getRequirementIcon = (requirement) => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .requirement-item {
     padding: 8px;
   }

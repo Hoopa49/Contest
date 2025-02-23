@@ -5,8 +5,11 @@
 
 import { ref } from 'vue'
 import { ValidationError, AuthError, NetworkError, ServerError } from '../utils/errors'
+import { useLoadingStore } from '@/stores/loading'
 
 export function useError() {
+  const loadingStore = useLoadingStore()
+  
   // Состояние
   const error = ref(null)
   const fieldErrors = ref({})
@@ -98,6 +101,61 @@ export function useError() {
     }
   }
 
+  /**
+   * Безопасное выполнение асинхронной операции
+   * @param {Function} operation - Асинхронная операция для выполнения
+   * @param {Object} options - Опции выполнения
+   * @param {boolean} options.showLoader - Показывать ли индикатор загрузки
+   * @param {boolean} options.clearErrorsBeforeExecute - Очищать ли ошибки перед выполнением
+   * @returns {Promise} Результат выполнения операции
+   */
+  const safeExecute = async (operation, options = {}) => {
+    const { 
+      showLoader = true, 
+      clearErrorsBeforeExecute = true 
+    } = options
+
+    try {
+      if (clearErrorsBeforeExecute) {
+        clearErrors()
+      }
+
+      if (showLoader) {
+        loadingStore.startLoading()
+      }
+
+      return await operation()
+    } catch (err) {
+      handleError(err)
+      throw err
+    } finally {
+      if (showLoader) {
+        loadingStore.stopLoading()
+      }
+    }
+  }
+
+  /**
+   * Безопасное выполнение операции с формой
+   * @param {Function} operation - Асинхронная операция для выполнения
+   * @param {Object} form - Ссылка на форму Vue (v-form)
+   * @param {Object} options - Опции выполнения
+   * @param {boolean} options.validateForm - Выполнять ли валидацию формы
+   * @returns {Promise} Результат выполнения операции
+   */
+  const safeSubmit = async (operation, form, options = {}) => {
+    const { validateForm = true } = options
+
+    if (validateForm && form?.validate) {
+      const isValid = await form.validate()
+      if (!isValid) {
+        return false
+      }
+    }
+
+    return safeExecute(operation, options)
+  }
+
   return {
     error,
     fieldErrors,
@@ -106,6 +164,8 @@ export function useError() {
     hasFieldError,
     getFieldError,
     getFieldErrors,
-    handleError
+    handleError,
+    safeExecute,
+    safeSubmit
   }
 } 

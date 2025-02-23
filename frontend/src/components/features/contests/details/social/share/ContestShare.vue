@@ -96,12 +96,12 @@ import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { markRaw } from 'vue'
-import TwitterIcon from '@/components/icons/TwitterIcon.vue'
-import FacebookIcon from '@/components/icons/FacebookIcon.vue'
-import WhatsAppIcon from '@/components/icons/WhatsAppIcon.vue'
-import InstagramIcon from '@/components/icons/InstagramIcon.vue'
-import VkIcon from '@/components/icons/VkIcon.vue'
-import TelegramIcon from '@/components/icons/TelegramIcon.vue'
+import TwitterIcon from '@/components/ui/icons/TwitterIcon.vue'
+import FacebookIcon from '@/components/ui/icons/FacebookIcon.vue'
+import WhatsAppIcon from '@/components/ui/icons/WhatsAppIcon.vue'
+import InstagramIcon from '@/components/ui/icons/InstagramIcon.vue'
+import VkIcon from '@/components/ui/icons/VkIcon.vue'
+import TelegramIcon from '@/components/ui/icons/TelegramIcon.vue'
 import api from '@/services/api.service'
 
 // Функция для получения счетчиков из localStorage
@@ -372,19 +372,19 @@ const formatShareCount = (count) => {
   position: absolute;
   top: -8px;
   right: -12px;
-  min-width: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   height: 20px;
+  padding: 0 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  color: white;
+  transition: all 0.3s ease;
+  min-width: 24px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
   box-shadow: 0 2px 4px rgba(var(--v-theme-on-surface), 0.12);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  transition: all 0.3s ease;
-  color: white;
 }
 
 .share-count--vk {
@@ -413,11 +413,11 @@ const formatShareCount = (count) => {
 }
 
 .share-count.large-number {
-  min-width: 42px;
-  height: 22px;
-  font-size: 11px;
   right: -20px;
+  height: 22px;
   padding: 0 8px;
+  min-width: 42px;
+  font-size: 11px;
 }
 
 .share-count:hover {
@@ -426,11 +426,11 @@ const formatShareCount = (count) => {
 }
 
 .share-btn {
-  transition: all 0.2s ease;
-  width: 48px;
-  height: 48px;
   position: relative;
   z-index: 1;
+  width: 48px;
+  height: 48px;
+  transition: all 0.2s ease;
 }
 
 .share-btn:hover {
@@ -466,7 +466,7 @@ const formatShareCount = (count) => {
 }
 
 /* Адаптивная верстка */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .share-network-container {
     min-width: 70px;
   }

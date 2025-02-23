@@ -5,206 +5,283 @@
 
 import { defineStore } from 'pinia'
 import { notificationService } from '@/services/api/notification.api'
-import { useStoreHelpers } from '@/composables/useStoreHelpers'
-import { useCrudHelpers } from '@/composables/useCrudHelpers'
-import { useSettingsHelpers } from '@/composables/useSettingsHelpers'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
-const { baseState, baseGetters, baseActions, withAsync } = useStoreHelpers()
+export const useNotificationStore = defineStore('notification', () => {
+  // Состояние
+  const toasts = ref([])
+  const toastPosition = ref('top-right')
+  const modal = ref({ isOpen: false, component: null, props: {} })
 
-export const useNotificationStore = defineStore('notification', {
-  state: () => ({
-    ...baseState,
-    items: [], // notifications
-    unreadCount: 0,
-    settings: null,
-    lastFetchTime: null,
-    pollingInterval: null,
-    isPollingEnabled: false
-  }),
+  // Состояние для уведомлений пользователя
+  const notifications = ref([])
+  const unreadCount = ref(0)
+  const settings = ref(null)
+  const lastFetchTime = ref(null)
+  const pollingInterval = ref(null)
+  const isPollingEnabled = ref(false)
+  const loading = ref(false)
+  const storeError = ref(null)
 
-  getters: {
-    ...baseGetters,
-    
-    // Получение всех уведомлений
-    allNotifications: (state) => state.items,
-    
-    // Количество непрочитанных уведомлений
-    totalUnreadCount: (state) => state.unreadCount,
-    
-    // Настройки уведомлений
-    notificationSettings: (state) => state.settings,
-    
-    // Непрочитанные уведомления
-    unreadNotifications: (state) => state.items.filter(n => !n.read),
-    
-    // Прочитанные уведомления
-    readNotifications: (state) => state.items.filter(n => n.read),
-    
-    // Последние 5 уведомлений
-    recentNotifications: (state) => state.items.slice(0, 5),
-    
-    // Время последнего обновления
-    lastUpdate: (state) => state.lastFetchTime
-  },
+  // Методы для тостов
+  const showToast = ({ type = 'info', title = '', message = '', duration = 5000 }) => {
+    const id = Date.now()
+    toasts.value.push({
+      id,
+      type,
+      title,
+      message,
+      duration,
+      show: true
+    })
 
-  actions: {
-    ...baseActions,
+    // Автоматическое удаление
+    if (duration > 0) {
+      setTimeout(() => {
+        removeToast(id)
+      }, duration)
+    }
 
-    // Инициализация helpers
-    init() {
-      const crud = useCrudHelpers(notificationService, this)
-      const settings = useSettingsHelpers(notificationService, this)
-      return { crud, settings }
-    },
+    return id
+  }
 
-    // CRUD операции
-    async fetchNotifications() {
-      return withAsync(this, async () => {
-        const { crud } = this.init()
-        const notifications = await crud.fetchAll()
-        this.items = notifications
-        this.unreadCount = notifications.filter(n => !n.read).length
-        this.lastFetchTime = new Date()
-        return notifications
-      })
-    },
+  const removeToast = (id) => {
+    const index = toasts.value.findIndex(toast => toast.id === id)
+    if (index !== -1) {
+      toasts.value[index].show = false
+      setTimeout(() => {
+        toasts.value = toasts.value.filter(toast => toast.id !== id)
+      }, 300) // Задержка для анимации
+    }
+  }
 
-    // Специфичные операции
-    async fetchUnreadNotifications() {
-      return withAsync(this, async () => {
-        const notifications = await notificationService.getUnread()
-        // Обновляем только непрочитанные, сохраняя прочитанные
-        const readNotifications = this.items.filter(n => n.read)
-        this.items = [...notifications, ...readNotifications]
-        this.unreadCount = notifications.length
-        this.lastFetchTime = new Date()
-        return notifications
-      })
-    },
+  const clearToasts = () => {
+    toasts.value = []
+  }
 
-    async markAsRead(id) {
-      return withAsync(this, async () => {
-        await notificationService.markAsRead(id)
-        const notification = this.items.find(n => n.id === id)
-        if (notification && !notification.read) {
-          notification.read = true
-          this.unreadCount = Math.max(0, this.unreadCount - 1)
-        }
-      })
-    },
+  const setToastPosition = (position) => {
+    toastPosition.value = position
+  }
 
-    async markAllAsRead() {
-      return withAsync(this, async () => {
-        await notificationService.markAllAsRead()
-        this.items.forEach(n => n.read = true)
-        this.unreadCount = 0
-      })
-    },
+  // Методы для модальных окон
+  const showModal = (component, props = {}) => {
+    modal.value = {
+      isOpen: true,
+      component,
+      props
+    }
+  }
 
-    async deleteNotification(id) {
-      return withAsync(this, async () => {
-        const { crud } = this.init()
-        await crud.remove(id)
-        const index = this.items.findIndex(n => n.id === id)
-        if (index !== -1) {
-          const notification = this.items[index]
-          this.items.splice(index, 1)
-          if (!notification.read) {
-            this.unreadCount = Math.max(0, this.unreadCount - 1)
-          }
-        }
-      })
-    },
+  const closeModal = () => {
+    modal.value = {
+      isOpen: false,
+      component: null,
+      props: {}
+    }
+  }
 
-    // Операции с настройками
-    async fetchSettings() {
-      return withAsync(this, async () => {
-        const { settings } = this.init()
-        const settingsData = await settings.fetchSettings()
-        this.settings = settingsData
-        return settingsData
-      })
-    },
+  // Хелперы для разных типов уведомлений
+  const success = (message, title = '') => showToast({ type: 'success', title, message })
+  const showError = (message, title = '') => showToast({ type: 'error', title, message })
+  const warning = (message, title = '') => showToast({ type: 'warning', title, message })
+  const info = (message, title = '') => showToast({ type: 'info', title, message })
 
-    async updateSettings(settingsData) {
-      return withAsync(this, async () => {
-        const { settings } = this.init()
-        const updatedSettings = await settings.updateSettings(settingsData)
-        this.settings = updatedSettings
-        return updatedSettings
-      })
-    },
+  // Геттеры для уведомлений пользователя
+  const allNotifications = () => notifications.value
+  const unreadNotifications = () => notifications.value.filter(n => !n.read)
+  const readNotifications = () => notifications.value.filter(n => n.read)
+  const recentNotifications = () => notifications.value.slice(0, 5)
+  const totalUnreadCount = () => unreadCount.value
+  const notificationSettings = () => settings.value
+  const lastUpdate = () => lastFetchTime.value
 
-    // Polling уведомлений
-    startPolling(interval = 30000) {
-      if (this.isPollingEnabled) return
-      
-      this.isPollingEnabled = true
-      this.pollingInterval = setInterval(async () => {
-        try {
-          await this.fetchUnreadNotifications()
-        } catch (error) {
-          console.error('Ошибка при получении уведомлений:', error)
-        }
-      }, interval)
-    },
+  // Actions для уведомлений пользователя
+  const fetchNotifications = async () => {
+    try {
+      loading.value = true
+      const { data } = await notificationService.getAll()
+      notifications.value = data
+      unreadCount.value = data.filter(n => !n.read).length
+      lastFetchTime.value = new Date()
+      return data
+    } catch (err) {
+      storeError.value = err
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
 
-    stopPolling() {
-      if (this.pollingInterval) {
-        clearInterval(this.pollingInterval)
-        this.pollingInterval = null
+  const fetchUnreadNotifications = async () => {
+    try {
+      loading.value = true
+      const { data } = await notificationService.getUnread()
+      // Обновляем только непрочитанные, сохраняя прочитанные
+      const readNotifications = notifications.value.filter(n => n.read)
+      notifications.value = [...data, ...readNotifications]
+      unreadCount.value = data.length
+      lastFetchTime.value = new Date()
+      return data
+    } catch (err) {
+      storeError.value = err
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const markAsRead = async (id) => {
+    try {
+      await notificationService.markAsRead(id)
+      const notification = notifications.value.find(n => n.id === id)
+      if (notification && !notification.read) {
+        notification.read = true
+        unreadCount.value = Math.max(0, unreadCount.value - 1)
       }
-      this.isPollingEnabled = false
-    },
+    } catch (err) {
+      storeError.value = err
+      throw err
+    }
+  }
+
+  const markAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead()
+      notifications.value.forEach(n => n.read = true)
+      unreadCount.value = 0
+    } catch (err) {
+      storeError.value = err
+      throw err
+    }
+  }
+
+  const deleteNotification = async (id) => {
+    try {
+      await notificationService.delete(id)
+      const index = notifications.value.findIndex(n => n.id === id)
+      if (index !== -1) {
+        const notification = notifications.value[index]
+        notifications.value.splice(index, 1)
+        if (!notification.read) {
+          unreadCount.value = Math.max(0, unreadCount.value - 1)
+        }
+      }
+    } catch (err) {
+      storeError.value = err
+      throw err
+    }
+  }
+
+  // Управление настройками
+  const fetchSettings = async () => {
+    try {
+      const { data } = await notificationService.getSettings()
+      settings.value = data
+      return data
+    } catch (err) {
+      storeError.value = err
+      throw err
+    }
+  }
+
+  const updateSettings = async (settings) => {
+    try {
+      const { data } = await notificationService.updateSettings(settings)
+      settings.value = data
+      return data
+    } catch (err) {
+      storeError.value = err
+      throw err
+    }
+  }
+
+  // Управление polling
+  const startPolling = (interval = 30000) => {
+    if (isPollingEnabled.value) return
+    
+    isPollingEnabled.value = true
+    pollingInterval.value = setInterval(async () => {
+      try {
+        await fetchUnreadNotifications()
+      } catch (err) {
+        console.error('Ошибка при получении уведомлений:', err)
+      }
+    }, interval)
+  }
+
+  const stopPolling = () => {
+    if (pollingInterval.value) {
+      clearInterval(pollingInterval.value)
+      pollingInterval.value = null
+    }
+    isPollingEnabled.value = false
+  }
+
+  // Очистка состояния
+  const clearState = () => {
+    stopPolling()
+    notifications.value = []
+    unreadCount.value = 0
+    settings.value = null
+    lastFetchTime.value = null
+    storeError.value = null
+    loading.value = false
+    clearToasts()
+  }
+
+  return {
+    // Состояние
+    toasts,
+    toastPosition,
+    modal,
+    notifications,
+    unreadCount,
+    settings,
+    lastFetchTime,
+    pollingInterval,
+    isPollingEnabled,
+    loading,
+    storeError,
+
+    // Методы
+    showToast,
+    removeToast,
+    clearToasts,
+    setToastPosition,
+    showModal,
+    closeModal,
+
+    // Хелперы
+    success,
+    showError,
+    warning,
+    info,
+
+    // Геттеры для уведомлений пользователя
+    allNotifications,
+    unreadNotifications,
+    readNotifications,
+    recentNotifications,
+    totalUnreadCount,
+    notificationSettings,
+    lastUpdate,
+
+    // Actions для уведомлений пользователя
+    fetchNotifications,
+    fetchUnreadNotifications,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+
+    // Управление настройками
+    fetchSettings,
+    updateSettings,
+
+    // Управление polling
+    startPolling,
+    stopPolling,
 
     // Очистка состояния
-    clearState() {
-      this.stopPolling()
-      this.items = []
-      this.unreadCount = 0
-      this.settings = null
-      this.lastFetchTime = null
-      this.clearError()
-    },
-
-    // Добавление уведомления
-    addNotification({ type, message, timeout = 5000 }) {
-      try {
-        const notification = {
-          id: Date.now(),
-          type,
-          message,
-          timeout,
-          read: false,
-          createdAt: new Date().toISOString()
-        }
-        
-        this.items.unshift(notification)
-        this.unreadCount++
-        
-        if (timeout > 0) {
-          setTimeout(() => {
-            const index = this.items.findIndex(n => n.id === notification.id)
-            if (index !== -1) {
-              this.items.splice(index, 1)
-              if (!notification.read) {
-                this.unreadCount = Math.max(0, this.unreadCount - 1)
-              }
-            }
-          }, timeout)
-        }
-        
-        return notification
-      } catch (error) {
-        console.error('Error adding notification:', error)
-        throw error
-      }
-    },
-
-    // Алиас для addNotification для обратной совместимости
-    show({ type, message, timeout = 5000 }) {
-      return this.addNotification({ type, message, timeout })
-    }
+    clearState
   }
 }) 

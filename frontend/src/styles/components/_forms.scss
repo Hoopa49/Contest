@@ -1,0 +1,202 @@
+@use '../abstracts/variables' as *;
+@use '../abstracts/mixins' as *;
+
+// Контейнер формы
+.form-container {
+  position: relative;
+  height: auto;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: var(--background-form);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-form);
+}
+
+// Базовая форма
+.form {
+  @include form-base;
+  
+  // Модификаторы размера
+  &--sm {
+    .form__input {
+      height: 40px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+    }
+  }
+  
+  &--lg {
+    .form__input {
+      height: 56px;
+      padding: 1rem 1.5rem;
+      font-size: 1.125rem;
+    }
+  }
+  
+  // Состояния
+  &--loading {
+    opacity: 0.7;
+    pointer-events: none;
+    
+    .form__input {
+      background-image: linear-gradient(90deg, 
+        var(--bg-form) 0%, 
+        var(--bg-secondary) 50%, 
+        var(--bg-form) 100%
+      );
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+  }
+  
+  &--success {
+    .form__input {
+      border-color: rgb(var(--v-theme-success));
+      
+      &:focus {
+        box-shadow: 0 0 0 2px rgba(var(--v-theme-success), 0.2);
+      }
+    }
+    
+    .form__label {
+      color: rgb(var(--v-theme-success));
+    }
+  }
+  
+  &--error {
+    .form__input {
+      border-color: rgb(var(--v-theme-error));
+      
+      &:focus {
+        box-shadow: 0 0 0 2px rgba(var(--v-theme-error), 0.2);
+      }
+    }
+    
+    .form__label {
+      color: rgb(var(--v-theme-error));
+    }
+  }
+  
+  // Дополнительные элементы
+  &__addon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+    
+    &--left {
+      left: 1rem;
+      
+      + .form__input {
+        padding-left: 2.5rem;
+      }
+    }
+    
+    &--right {
+      right: 1rem;
+      
+      ~ .form__input {
+        padding-right: 2.5rem;
+      }
+    }
+  }
+  
+  &__helper {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+  
+  // Анимации
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+}
+
+// Группы форм
+.form-group {
+  display: flex;
+  gap: var(--spacing-base);
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+  
+  &--inline {
+    align-items: center;
+    
+    @media (max-width: 768px) {
+      flex-direction: row;
+    }
+  }
+}
+
+// Горизонтальные формы
+.form-horizontal {
+  .form__group {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: var(--spacing-base);
+    align-items: center;
+    
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-sm);
+    }
+  }
+  
+  .form__label {
+    margin-bottom: 0;
+  }
+}
+
+// Поиск
+.form-search {
+  position: relative;
+  
+  .form__input {
+    padding-left: 2.5rem;
+  }
+  
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+  }
+}
+
+// Адаптивность
+@media (width <= 768px) {
+  .form {
+    &__group--row {
+      flex-direction: column;
+      align-items: stretch;
+      
+      > * {
+        width: 100%;
+      }
+    }
+
+    &__field--half {
+      width: 100%;
+    }
+
+    &__actions {
+      flex-direction: column-reverse;
+      align-items: stretch;
+      
+      .button {
+        width: 100%;
+      }
+    }
+  }
+}

@@ -225,7 +225,7 @@ const updateCondition = (condition) => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .v-list-item {
     padding: 8px;
   }

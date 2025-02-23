@@ -246,8 +246,8 @@ const deleteComment = async () => {
 <style scoped>
 .comment-item {
   position: relative;
-  transition: all 0.3s ease;
   padding: 12px 0;
+  transition: all 0.3s ease;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 

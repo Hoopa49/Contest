@@ -234,9 +234,9 @@ export default {
 
 <style scoped>
 .gift-box-container {
+  position: relative;
   width: 150px;
   height: 150px;
-  position: relative;
   margin: 0 auto;
 }
 
@@ -266,7 +266,7 @@ export default {
 }
 
 .is-focused {
-  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.3));
+  filter: drop-shadow(0 0 8px rgb(139 92 246 / 30%));
 }
 
 .is-error {
