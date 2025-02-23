@@ -1,58 +1,41 @@
-/**
- * Composable для работы с уведомлениями
- * Использует Vuetify snackbar для отображения сообщений
- */
-
-import { ref } from 'vue'
+import { useNotificationStore } from '@/stores/notification'
 
 export function useNotification() {
-  const show = ref(false)
-  const message = ref('')
-  const color = ref('success')
-  const timeout = ref(3000)
+  const notificationStore = useNotificationStore()
 
-  // Показать успешное уведомление
-  const showSuccess = (text, type = 'success') => {
-    message.value = text
-    color.value = type
-    show.value = true
+  const showNotification = (type, message, timeout = 5000) => {
+    try {
+      notificationStore.showToast({ 
+        message, 
+        type, 
+        duration: timeout 
+      })
+    } catch (error) {
+      console.error('Ошибка при показе уведомления:', error)
+    }
   }
 
-  // Показать уведомление об ошибке
-  const showError = (text) => {
-    message.value = text
-    color.value = 'error'
-    show.value = true
+  const showSuccess = (message, timeout) => {
+    showNotification('success', message, timeout)
   }
 
-  // Показать информационное уведомление
-  const showInfo = (text) => {
-    message.value = text
-    color.value = 'info'
-    show.value = true
+  const showError = (message, timeout = 5000) => {
+    showNotification('error', message, timeout)
   }
 
-  // Показать предупреждение
-  const showWarning = (text) => {
-    message.value = text
-    color.value = 'warning'
-    show.value = true
+  const showWarning = (message, timeout = 4000) => {
+    showNotification('warning', message, timeout)
   }
 
-  // Закрыть уведомление
-  const close = () => {
-    show.value = false
+  const showInfo = (message, timeout = 3000) => {
+    showNotification('info', message, timeout)
   }
 
   return {
-    show,
-    message,
-    color,
-    timeout,
+    showNotification,
     showSuccess,
     showError,
-    showInfo,
     showWarning,
-    close
+    showInfo
   }
 } 

@@ -349,7 +349,7 @@
   background: rgba(var(--v-theme-surface-variant), 0.1);
 }
 
-:deep(.v-data-table__tr:hover:not(.v-data-table__expanded__content):not(.v-data-table__empty-wrapper)) {
+:deep(.v-data-table__tr:hover:not(.v-data-table__expanded__content, .v-data-table__empty-wrapper)) {
   background: rgba(var(--v-theme-surface-variant), 0.05) !important;
 }
 </style>

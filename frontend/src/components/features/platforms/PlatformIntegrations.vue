@@ -119,10 +119,10 @@ import YouTubeIntegration from './YouTubeIntegration.vue'
 import InstagramIntegration from './InstagramIntegration.vue'
 import VKIntegration from './VKIntegration.vue'
 import TelegramIntegration from './TelegramIntegration.vue'
-import VKIcon from '@/components/icons/VKIcon.vue'
-import TelegramIcon from '@/components/icons/TelegramIcon.vue'
-import YouTubeIcon from '@/components/icons/YouTubeIcon.vue'
-import InstagramIcon from '@/components/icons/InstagramIcon.vue'
+import VKIcon from '@/components/ui/icons/VKIcon.vue'
+import TelegramIcon from '@/components/ui/icons/TelegramIcon.vue'
+import YouTubeIcon from '@/components/ui/icons/YouTubeIcon.vue'
+import InstagramIcon from '@/components/ui/icons/InstagramIcon.vue'
 
 // Регистрируем все компоненты Chart.js
 Chart.register(...registerables)

@@ -31,16 +31,18 @@
           <v-divider class="my-2"></v-divider>
 
           <v-card-actions class="pa-4">
-            <v-btn
-              block
-              color="primary"
+            <UiButton
+              variant="primary"
               :loading="saving"
               :disabled="!hasAnyChanges"
               @click="saveAllSettings"
-              prepend-icon="mdi-content-save"
+              class="w-100"
             >
+              <template #icon>
+                <v-icon>mdi-content-save</v-icon>
+              </template>
               Сохранить изменения
-            </v-btn>
+            </UiButton>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -108,6 +110,36 @@
                         persistent-hint
                       />
                     </v-col>
+                    <!-- Добавляем настройки безопасности API -->
+                    <v-col cols="12">
+                      <v-card variant="outlined" class="mt-4">
+                        <v-card-title class="d-flex align-center">
+                          <v-icon start color="primary" class="me-2">mdi-api</v-icon>
+                          Безопасность API
+                        </v-card-title>
+                        <v-card-text>
+                          <v-row>
+                            <v-col cols="12" sm="6">
+                              <v-select
+                                v-model="settings.security.apiAccessControl"
+                                :items="['public', 'private', 'restricted']"
+                                label="Контроль доступа к API"
+                                hint="Уровень доступа к API endpoints"
+                                persistent-hint
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model="settings.security.apiAllowedOrigins"
+                                label="Разрешенные источники"
+                                hint="Список разрешенных доменов через запятую"
+                                persistent-hint
+                              />
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
                   </v-row>
                 </div>
               </v-fade-transition>
@@ -142,6 +174,30 @@
                               />
                             </v-col>
                           </v-row>
+                          <v-row class="mt-2">
+                            <v-col cols="12" class="d-flex gap-4">
+                              <UiButton
+                                variant="secondary"
+                                size="small"
+                                :disabled="!settings.integrations.youtube.enabled"
+                              >
+                                <template #icon>
+                                  <v-icon>mdi-refresh</v-icon>
+                                </template>
+                                Обновить данные
+                              </UiButton>
+                              <UiButton
+                                variant="danger"
+                                size="small"
+                                :disabled="!settings.integrations.youtube.enabled"
+                              >
+                                <template #icon>
+                                  <v-icon>mdi-delete</v-icon>
+                                </template>
+                                Очистить кэш
+                              </UiButton>
+                            </v-col>
+                          </v-row>
                         </v-card-text>
                       </v-card>
 
@@ -166,6 +222,30 @@
                                 label="Использовать webhook"
                                 :disabled="!settings.integrations.telegram.enabled"
                               />
+                            </v-col>
+                          </v-row>
+                          <v-row class="mt-2">
+                            <v-col cols="12" class="d-flex gap-4">
+                              <UiButton
+                                variant="info"
+                                size="small"
+                                :disabled="!settings.integrations.telegram.enabled"
+                              >
+                                <template #icon>
+                                  <v-icon>mdi-cog</v-icon>
+                                </template>
+                                Настроить webhook
+                              </UiButton>
+                              <UiButton
+                                variant="success"
+                                size="small"
+                                :disabled="!settings.integrations.telegram.enabled"
+                              >
+                                <template #icon>
+                                  <v-icon>mdi-test-tube</v-icon>
+                                </template>
+                                Тест соединения
+                              </UiButton>
                             </v-col>
                           </v-row>
                         </v-card-text>
@@ -257,9 +337,42 @@
                         label="Элементов на странице"
                         hint="Количество элементов при пагинации"
                         persistent-hint
-                        min="5"
+                        min="10"
                         max="100"
                       />
+                    </v-col>
+                    <!-- Добавляем настройки производительности API -->
+                    <v-col cols="12">
+                      <v-card variant="outlined" class="mt-4">
+                        <v-card-title class="d-flex align-center">
+                          <v-icon start color="primary" class="me-2">mdi-api</v-icon>
+                          Производительность API
+                        </v-card-title>
+                        <v-card-text>
+                          <v-row>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model="settings.performance.apiRateLimit"
+                                type="number"
+                                label="Лимит запросов (в минуту)"
+                                hint="Максимальное количество запросов к API"
+                                persistent-hint
+                                min="1"
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model="settings.performance.apiTimeout"
+                                type="number"
+                                label="Таймаут API (секунды)"
+                                hint="Максимальное время ожидания ответа"
+                                persistent-hint
+                                min="1"
+                              />
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
                     </v-col>
                   </v-row>
                 </div>
@@ -284,15 +397,17 @@
                     <br>
                     <span class="text-body-2">Не забудьте сохранить изменения перед выходом</span>
                   </div>
-                  <v-btn
-                    color="warning"
-                    class="mt-2 mt-sm-0"
+                  <UiButton
+                    variant="warning"
                     @click="saveAllSettings"
                     :loading="saving"
-                    prepend-icon="mdi-content-save"
+                    class="mt-2 mt-sm-0"
                   >
+                    <template #icon>
+                      <v-icon>mdi-content-save</v-icon>
+                    </template>
                     Сохранить
-                  </v-btn>
+                  </UiButton>
                 </div>
               </v-alert>
             </div>
@@ -371,25 +486,25 @@
 
         <template v-slot:item.actions="{ item }">
           <div class="d-flex justify-end">
-            <v-btn
-              icon="mdi-eye"
-              variant="text"
-              density="compact"
+            <UiButton
+              variant="ghost"
               size="small"
-              color="info"
               @click="showChanges(item)"
               class="mr-1"
             >
-            </v-btn>
-            <v-btn
-              icon="mdi-restore"
-              variant="text"
-              density="compact"
+              <template #icon>
+                <v-icon>mdi-eye</v-icon>
+              </template>
+            </UiButton>
+            <UiButton
+              variant="ghost"
               size="small"
-              color="warning"
-              @click="confirmRollback(item)"
+              @click="restoreChanges(item)"
             >
-            </v-btn>
+              <template #icon>
+                <v-icon>mdi-restore</v-icon>
+              </template>
+            </UiButton>
           </div>
         </template>
 
@@ -414,21 +529,19 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
+          <UiButton
+            variant="ghost"
             @click="rollbackDialog = false"
           >
             Отмена
-          </v-btn>
-          <v-btn
-            color="warning"
-            variant="text"
-            @click="executeRollback"
+          </UiButton>
+          <UiButton
+            variant="warning"
             :loading="rolling"
+            @click="executeRollback"
           >
             Откатить
-          </v-btn>
+          </UiButton>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -440,9 +553,15 @@
           <v-icon class="mr-2" :color="getCategoryColor(selectedItem?.category)">{{ getCategoryIcon(dialogTitle) }}</v-icon>
           {{ dialogTitle }}
           <v-spacer></v-spacer>
-          <v-btn icon="mdi-close" variant="text" @click="dialog = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <UiButton
+            variant="ghost"
+            size="small"
+            @click="dialog = false"
+          >
+            <template #icon>
+              <v-icon>mdi-close</v-icon>
+            </template>
+          </UiButton>
         </v-card-title>
 
         <v-card-subtitle class="pa-4 pt-2 d-flex align-center">
@@ -564,10 +683,16 @@
 <script>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useSystemSettingsStore } from '@/stores/systemSettings'
+import { useNotification } from '@/composables/useNotification'
 import { formatDate } from '@/utils/date'
+import UiButton from '@/components/ui/buttons/UiButton.vue'
 
 export default {
   name: 'SystemSettings',
+  
+  components: {
+    UiButton
+  },
   
   setup() {
     const systemSettingsStore = useSystemSettingsStore()
@@ -624,7 +749,9 @@ export default {
         maxLoginAttempts: 5,
         passwordExpiryDays: 90,
         sessionTimeoutMinutes: 30,
-        requireTwoFactor: false
+        requireTwoFactor: false,
+        apiAccessControl: 'public',
+        apiAllowedOrigins: ''
       },
       integrations: {
         youtube: {
@@ -648,7 +775,9 @@ export default {
       },
       performance: {
         cacheTimeout: 60,
-        itemsPerPage: 20
+        itemsPerPage: 20,
+        apiRateLimit: 10,
+        apiTimeout: 10
       }
     })
 
@@ -997,7 +1126,9 @@ export default {
         updateInterval: 'Интервал обновления',
         webhookEnabled: 'Webhook включен',
         dailyLimit: 'Дневной лимит',
-        batchSize: 'Размер пакета'
+        batchSize: 'Размер пакета',
+        apiAccessControl: 'Контроль доступа к API',
+        apiAllowedOrigins: 'Разрешенные источники'
       }
       return translations[key] || key
     }
@@ -1026,7 +1157,9 @@ export default {
         email: 'mdi-email',
         push: 'mdi-bell',
         cacheTimeout: 'mdi-timer',
-        itemsPerPage: 'mdi-format-list-numbered'
+        itemsPerPage: 'mdi-format-list-numbered',
+        apiAccessControl: 'mdi-shield-key',
+        apiAllowedOrigins: 'mdi-link'
       }
       return icons[key] || 'mdi-cog'
     }
@@ -1113,12 +1246,12 @@ export default {
 }
 
 :deep(.v-data-table-header th) {
-  font-size: 0.875rem !important;
+  height: 40px !important;
+  padding: 0 12px !important;
   color: rgba(var(--v-theme-on-surface), 0.7) !important;
+  font-size: 0.875rem !important;
   font-weight: 600 !important;
   white-space: nowrap;
-  padding: 0 12px !important;
-  height: 40px !important;
 }
 
 :deep(.v-data-table__tr) {
@@ -1130,9 +1263,9 @@ export default {
 }
 
 :deep(.v-data-table__tr td) {
-  font-size: 0.875rem !important;
-  padding: 4px 12px !important;
   height: 40px !important;
+  padding: 4px 12px !important;
+  font-size: 0.875rem !important;
 }
 
 .changes-summary {
@@ -1183,9 +1316,9 @@ export default {
 }
 
 .changes-container {
+  padding: 12px;
   background: rgba(var(--v-theme-surface-variant), 0.05);
   border-radius: 8px;
-  padding: 12px;
 }
 
 .change-value {
@@ -1252,24 +1385,24 @@ export default {
 }
 
 .change-value.old {
-  color: rgba(var(--v-theme-error), 0.87);
   background: rgba(var(--v-theme-error), 0.05);
+  color: rgba(var(--v-theme-error), 0.87);
 }
 
 .change-value.new {
-  color: rgba(var(--v-theme-success), 0.87);
   background: rgba(var(--v-theme-success), 0.05);
+  color: rgba(var(--v-theme-success), 0.87);
 }
 
 .change-value.removed {
-  color: rgba(var(--v-theme-warning), 0.87);
   background: rgba(var(--v-theme-warning), 0.05);
+  color: rgba(var(--v-theme-warning), 0.87);
   text-decoration: line-through;
 }
 
 .change-value.added {
-  color: rgba(var(--v-theme-info), 0.87);
   background: rgba(var(--v-theme-info), 0.05);
+  color: rgba(var(--v-theme-info), 0.87);
 }
 
 .text-h6 {
@@ -1288,7 +1421,7 @@ export default {
 
 .settings-nav {
   position: sticky;
-  top: 16px;
+  top: 1rem;
 }
 
 .settings-nav-item {
@@ -1316,6 +1449,7 @@ export default {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1327,9 +1461,18 @@ export default {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.gap-4 {
+  gap: 1rem !important;
+}
+
+.w-100 {
+  width: 100%;
 }
 </style> 

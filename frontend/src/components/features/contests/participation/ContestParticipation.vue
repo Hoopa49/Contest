@@ -448,7 +448,7 @@ onBeforeUnmount(() => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .contest-participation {
     margin: 0;
   }

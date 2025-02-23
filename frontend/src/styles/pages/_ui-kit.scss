@@ -1,0 +1,203 @@
+@use '../abstracts/variables' as *;
+@use '../abstracts/mixins' as *;
+
+// Стили для страницы UI Kit
+.ui-kit-page {
+  min-height: calc(100vh - var(--navbar-height));
+  padding: 1.5rem;
+
+  // Группы компонентов
+  .button-group,
+  .form-group,
+  .alert-group,
+  .toast-group,
+  .card-group {
+    padding: 1.5rem;
+    border: 1px solid var(--ui-kit-border-color);
+    background-color: var(--ui-kit-bg-primary);
+    border-radius: var(--border-radius-md);
+    margin-top: 1rem;
+    box-shadow: var(--ui-kit-shadow);
+  }
+
+  // Специфичные стили для групп
+  .button-group {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .form-group {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 400px;
+  }
+
+  // Заголовки и секции
+  .ui-kit__title {
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    font-size: 2rem;
+    font-weight: 600;
+  }
+
+  .ui-kit__section {
+    margin-bottom: 2rem;
+  }
+
+  .ui-kit__section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--ui-kit-border-color);
+    transition: var(--transition-base);
+    background-color: var(--ui-kit-bg-secondary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    margin-bottom: 1rem;
+
+    &:hover {
+      background-color: var(--ui-kit-bg-hover);
+    }
+
+    h2 {
+      margin: 0;
+      color: var(--text-primary);
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+  }
+
+  .ui-kit__subsection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--ui-kit-border-color);
+    transition: var(--transition-base);
+    background-color: var(--ui-kit-bg-tertiary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+
+    &:hover {
+      background-color: var(--ui-kit-bg-hover);
+    }
+
+    h3 {
+      margin: 0;
+      color: var(--text-primary);
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+  }
+
+  // Кнопки сворачивания
+  .ui-kit__collapse-button {
+    padding: 0.25rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .ui-kit__collapse-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    transition: transform 0.2s ease;
+
+    &--rotated {
+      transform: rotate(-180deg);
+    }
+  }
+}
+
+// Светлая тема
+.v-theme--light .ui-kit-page {
+  .button-group,
+  .form-group,
+  .alert-group,
+  .toast-group,
+  .card-group {
+    background-color: var(--background-form);
+    border-color: var(--border-base);
+    box-shadow: var(--shadow-form);
+  }
+
+  .ui-kit__section-header {
+    background-color: var(--background-secondary);
+    border-color: var(--border-base);
+
+    &:hover {
+      background-color: var(--background-form);
+    }
+
+    h2 {
+      color: var(--text-primary);
+    }
+  }
+
+  .ui-kit__subsection-header {
+    background-color: var(--background-form);
+    border-color: var(--border-base);
+
+    &:hover {
+      background-color: var(--background-secondary);
+    }
+
+    h3 {
+      color: var(--text-primary);
+    }
+  }
+
+  .ui-kit__collapse-button {
+    color: var(--text-secondary);
+  }
+
+  .ui-kit__title {
+    color: var(--text-primary);
+  }
+}
+
+// Темная тема
+.v-theme--dark .ui-kit-page {
+  background-color: rgb(var(--v-theme-background));
+
+  .button-group,
+  .form-group,
+  .alert-group,
+  .toast-group,
+  .card-group {
+    background-color: var(--background-form);
+    border-color: var(--border-base);
+  }
+
+  .ui-kit__section-header {
+    background-color: var(--background-secondary);
+    border-color: var(--border-base);
+
+    &:hover {
+      background-color: rgba(var(--v-theme-on-surface), 0.08);
+    }
+
+    h2 {
+      color: var(--text-primary);
+    }
+  }
+
+  .ui-kit__subsection-header {
+    background-color: var(--background-form);
+    border-color: var(--border-base);
+
+    &:hover {
+      background-color: rgba(var(--v-theme-on-surface), 0.08);
+    }
+
+    h3 {
+      color: var(--text-primary);
+    }
+  }
+} 

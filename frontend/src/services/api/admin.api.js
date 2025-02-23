@@ -99,18 +99,71 @@ class AdminAPI {
 
   /**
    * Получение системной статистики
+   * @param {Object} params - Параметры запроса (период, метрика)
    * @returns {Promise<{data: SystemStats}>}
    */
-  async getSystemStats() {
-    const { data } = await http.get('/admin/stats')
+  async getSystemStats(params = {}) {
+    const { data } = await http.get('/admin/stats', { 
+      params: {
+        ...params,
+        _t: Date.now() // Предотвращаем кэширование
+      }
+    })
     return data
   }
 
   /**
-   * Получение аналитики
+   * Получение аналитики по категории
+   * @param {Object} params - Параметры запроса (период, тип графика)
+   * @returns {Promise<{data: Analytics}>}
    */
   async getAnalytics(params = {}) {
-    const { data } = await http.get('/admin/analytics', { params })
+    const { data } = await http.get(`/admin/analytics/dashboard`, { 
+      params: {
+        ...params,
+        _t: Date.now()
+      }
+    })
+    return data
+  }
+
+  /**
+   * Получение агрегированных метрик
+   * @param {string} category - Категория метрик
+   * @param {Object} params - Параметры запроса (период, метрики)
+   * @returns {Promise<{data: Object}>}
+   */
+  async getAggregatedMetrics(category, params = {}) {
+    const { data } = await http.get(`/admin/analytics/${category}/metrics`, {
+      params: {
+        ...params,
+        _t: Date.now()
+      }
+    })
+    return data
+  }
+
+  /**
+   * Получение прогнозов
+   * @param {Object} params - Параметры запроса (период)
+   * @returns {Promise<{data: Array}>}
+   */
+  async getForecasts(params = {}) {
+    const { data } = await http.get('/admin/analytics/forecasts', {
+      params: {
+        ...params,
+        _t: Date.now()
+      }
+    })
+    return data
+  }
+
+  /**
+   * Получение рекомендаций
+   * @returns {Promise<{data: Array}>}
+   */
+  async getRecommendations() {
+    const { data } = await http.get('/admin/analytics/recommendations')
     return data
   }
 

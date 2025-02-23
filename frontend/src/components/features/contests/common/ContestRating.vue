@@ -200,8 +200,8 @@ export default {
 
 .rating-score {
   display: flex;
-  align-items: baseline;
   justify-content: center;
+  align-items: baseline;
   gap: 4px;
   margin-bottom: 8px;
 }

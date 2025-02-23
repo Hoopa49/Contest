@@ -109,6 +109,67 @@ class AnalyticsController {
       next(error)
     }
   }
+
+  /**
+   * Получить данные для дашборда аналитики
+   */
+  async getDashboardAnalytics(req, res, next) {
+    try {
+      const { period, chartType } = req.query
+      
+      if (!period || !chartType) {
+        throw new ValidationError('Period and chartType are required')
+      }
+
+      const userActivity = await analyticsService.getUserActivity(period, chartType)
+      const platformDistribution = await analyticsService.getPlatformDistribution()
+      
+      res.json({ 
+        success: true, 
+        data: {
+          userActivity,
+          platformDistribution
+        }
+      })
+    } catch (error) {
+      logger.error('Error getting dashboard analytics:', error)
+      next(error)
+    }
+  }
+
+  /**
+   * Получить прогнозы
+   */
+  async getForecasts(req, res, next) {
+    try {
+      const { period } = req.query
+      
+      if (!period) {
+        throw new ValidationError('Period is required')
+      }
+
+      const forecasts = await analyticsService.getForecasts(period)
+      
+      res.json({ success: true, data: forecasts })
+    } catch (error) {
+      logger.error('Error getting forecasts:', error)
+      next(error)
+    }
+  }
+
+  /**
+   * Получить рекомендации
+   */
+  async getRecommendations(req, res, next) {
+    try {
+      const recommendations = await analyticsService.getRecommendations()
+      
+      res.json({ success: true, data: recommendations })
+    } catch (error) {
+      logger.error('Error getting recommendations:', error)
+      next(error)
+    }
+  }
 }
 
 module.exports = new AnalyticsController() 

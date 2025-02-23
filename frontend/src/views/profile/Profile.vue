@@ -46,9 +46,12 @@
               <template v-else>
                 <!-- Шапка профиля -->
                 <div class="d-flex align-center mb-6">
-                  <v-avatar size="80" color="primary" class="mr-4">
-                    <span class="text-h4 text-white">{{ initials }}</span>
-                  </v-avatar>
+                  <UserAvatar
+                    :src="user.avatar"
+                    :name="user.name"
+                    size="80"
+                    class="mr-4"
+                  />
                   <div>
                     <h1 class="text-h4 mb-1">{{ fullName }}</h1>
                     <p class="text-subtitle-1 text-medium-emphasis">{{ user?.email }}</p>
@@ -174,7 +177,7 @@ export default {
   transition: all 0.2s ease-in-out;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .border-r {
     border-right: none;
     border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));

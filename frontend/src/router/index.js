@@ -6,6 +6,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authGuard, adminGuard, guestGuard, titleGuard } from './guards'
 import profileRoutes from './profile.routes'
+import authRoutes from './auth.routes'
+import adminRoutes from './admin.routes'
 import { useAuthStore } from '../stores/auth'
 
 // Определение маршрутов
@@ -13,7 +15,7 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    component: () => import('../views/HomeView.vue'),
+    component: () => import('../views/home/index.vue'),
     meta: { 
       title: 'Главная'
     }
@@ -46,111 +48,55 @@ const routes = [
       title: 'Детали конкурса',
       requiresAuth: true
     },
+  },
+  {
+    path: '/tracking',
+    name: 'tracking',
+    component: () => import('../views/tracking/index.vue'),
+    meta: {
+      title: 'Отслеживание',
+      requiresAuth: true
+    },
     beforeEnter: [authGuard]
   },
   {
     path: '/about',
     name: 'about',
-    component: () => import('../views/AboutView.vue'),
+    component: () => import('../views/about/index.vue'),
     meta: { 
       title: 'О проекте'
     }
   },
+  // Маршруты для ошибок
   {
-    path: '/auth/login',
-    name: 'login',
-    component: () => import('../views/auth/LoginForm.vue'),
-    meta: { 
-      title: 'Вход',
-      guest: true
-    },
-    beforeEnter: [guestGuard]
-  },
-  {
-    path: '/auth/register',
-    name: 'register',
-    component: () => import('../views/auth/Register.vue'),
-    meta: { 
-      title: 'Регистрация',
-      guest: true
-    },
-    beforeEnter: [guestGuard]
-  },
-  {
-    path: '/admin',
-    name: 'admin',
-    component: () => import('../views/admin/AdminLayout.vue'),
-    meta: { 
-      title: 'Панель администратора',
-      requiresAuth: true,
-      requiresAdmin: true
-    },
-    beforeEnter: [authGuard, adminGuard],
+    path: '/error',
+    name: 'error',
+    component: () => import('../views/error/index.vue'),
     children: [
       {
-        path: '',
-        name: 'admin-dashboard',
-        component: () => import('../views/admin/Dashboard.vue'),
+        path: '404',
+        name: 'not-found',
+        component: () => import('../views/error/NotFound.vue'),
         meta: { 
-          tab: 'dashboard',
-          title: 'Панель администратора'
-        }
-      },
-      {
-        path: 'system-settings',
-        name: 'admin-system-settings',
-        component: () => import('../views/admin/SystemSettings.vue'),
-        meta: { 
-          tab: 'system-settings',
-          title: 'Системные настройки'
-        }
-      },
-      {
-        path: 'users',
-        name: 'admin-users',
-        component: () => import('../views/admin/UserManagement.vue'),
-        meta: { 
-          tab: 'users',
-          title: 'Пользователи'
-        }
-      },
-      {
-        path: 'integrations',
-        name: 'admin-integrations',
-        component: () => import('../components/features/platforms/PlatformIntegrations.vue'),
-        meta: { 
-          tab: 'integrations',
-          title: 'Интеграции'
-        }
-      },
-      {
-        path: 'logs',
-        name: 'admin-logs',
-        component: () => import('../views/admin/NotificationSettings.vue'),
-        meta: { 
-          tab: 'logs',
-          title: 'Логи'
+          title: 'Страница не найдена'
         }
       }
     ]
   },
-  {
-    path: '/auth/telegram/callback',
-    name: 'telegram-callback',
-    component: () => import('../views/auth/TelegramCallback.vue'),
-    meta: { 
-      title: 'Авторизация через Telegram',
-      guest: true
-    },
+  // Маршруты аутентификации
+  ...authRoutes.map(route => ({
+    ...route,
     beforeEnter: [guestGuard]
-  },
+  })),
   // Профильные маршруты
   ...profileRoutes,
-  // Маршрут для 404
+  // Административные маршруты
+  ...adminRoutes,
+  // Перенаправление всех несуществующих маршрутов на 404
   {
-    path: '/:pathMatch(.*)*',
+    path: '/:catchAll(.*)*',
     name: 'not-found',
-    component: () => import('../views/NotFound.vue'),
+    component: () => import('../views/error/NotFound.vue'),
     meta: { 
       title: 'Страница не найдена'
     }

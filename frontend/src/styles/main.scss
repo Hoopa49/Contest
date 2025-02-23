@@ -1,0 +1,113 @@
+// Импорты абстракций
+@forward 'abstracts/variables';
+@forward 'abstracts/mixins';
+@forward 'abstracts/functions';
+
+// Темы
+@forward 'themes/light';
+@forward 'themes/dark';
+
+// Компоненты
+@forward 'components/forms';
+@forward 'components/buttons';
+@forward 'components/inputs';
+@forward 'components/selects';
+@forward 'components/checkboxes';
+@forward 'components/radios';
+@forward 'components/cards';
+@forward 'components/tables';
+@forward 'components/lists';
+@forward 'components/alerts';
+@forward 'components/toasts';
+@forward 'components/auth';
+@forward 'components/auth-banner';
+
+// Страницы
+@forward 'pages/ui-kit';
+
+// Глобальные стили
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+// Базовые стили для скрытия скроллбара
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+  }
+}
+
+// Общие стили для приложения
+.v-application {
+  background-color: var(--background-main);
+}
+
+.v-main {
+  background-color: var(--background-main);
+  padding: var(--v-layout-top, 64px) var(--v-layout-right, 0) var(--v-layout-bottom, 0) var(--v-layout-left, 0);
+}
+
+// Общие стили для контейнеров с контентом
+.content-container {
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.main-content {
+  position: relative;
+  height: auto;
+  min-height: 100%;
+  
+  .v-container {
+    height: auto;
+    padding: 16px;
+    min-height: 100%;
+  }
+}
+
+// Вспомогательные классы для анимаций
+.theme-transition {
+  transition: 
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+// Градиентная анимация
+.gradient-animation {
+  background-size: 200% 200%;
+  animation: gradientAnimation 15s ease infinite;
+}
+
+@keyframes gradientAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

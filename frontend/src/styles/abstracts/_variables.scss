@@ -1,0 +1,157 @@
+@use "sass:map";
+
+// Базовые переменные цветов
+$theme-colors: (
+  'primary': (
+    'base': #9061FF,
+    'hover': #7C3AED,
+    'light': #B794F4
+  ),
+  'dark': (
+    'background': (19, 19, 29),
+    'form': (42, 42, 54),
+    'secondary': (47, 47, 58)
+  )
+);
+
+// Z-индексы для SASS
+$z-indexes: (
+  'modal': 1000,
+  'dropdown': 900,
+  'header': 800,
+  'footer': 700,
+  'toast': 1100,
+  'tooltip': 1200,
+  'popover': 1300
+);
+
+// Базовые размеры и анимации
+:root {
+  // Размеры компонентов
+  --navbar-height: 64px;
+  --sidebar-width: 280px;
+  
+  // Отступы
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-base: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  
+  // Скругления
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  
+  // Анимации
+  --transition-base: 0.2s ease-in-out;
+  --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  // Прозрачности
+  --v-border-opacity: 0.15;
+  --v-high-emphasis-opacity: 1;
+  --v-medium-emphasis-opacity: 0.7;
+  --v-disabled-opacity: 0.4;
+  --v-hover-opacity: 0.04;
+  --v-focus-opacity: 0.12;
+  --v-selected-opacity: 0.08;
+  --v-activated-opacity: 0.12;
+  --v-pressed-opacity: 0.16;
+  --v-dragged-opacity: 0.08;
+
+  // Z-индексы как CSS-переменные
+  --z-modal: #{map.get($z-indexes, 'modal')};
+  --z-dropdown: #{map.get($z-indexes, 'dropdown')};
+  --z-header: #{map.get($z-indexes, 'header')};
+  --z-footer: #{map.get($z-indexes, 'footer')};
+  --z-toast: #{map.get($z-indexes, 'toast')};
+  --z-tooltip: #{map.get($z-indexes, 'tooltip')};
+  --z-popover: #{map.get($z-indexes, 'popover')};
+
+  // Светлая тема по умолчанию
+  --v-theme-primary: 144, 97, 255; // #9061FF
+  --v-theme-primary-darken-1: 124, 58, 237; // #7C3AED
+  --primary-color: rgb(var(--v-theme-primary));
+  --primary-hover: rgb(var(--v-theme-primary-darken-1));
+  
+  // Фоны
+  --bg-main: #F8F9FA;
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F1F5F9;
+  --bg-tertiary: #E2E8F0;
+  --bg-form: #FFFFFF;
+  
+  // Текст
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --text-tertiary: #94A3B8;
+  --text-light: #FFFFFF;
+  
+  // Границы и тени
+  --border: #E2E8F0;
+  --border-color: #E2E8F0;
+  --border-focus: rgb(var(--v-theme-primary));
+  
+  // Тени
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow-md: 0 4px 6px rgb(0 0 0 / 7%);
+  --shadow-lg: 0 10px 15px rgb(0 0 0 / 10%);
+  
+  // Градиенты
+  --gradient-primary: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-primary-darken-1)) 100%);
+  --gradient-banner: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-primary-darken-1)) 50%, rgb(var(--v-theme-primary)) 100%);
+  --gradient-overlay: linear-gradient(rgb(255 255 255 / 20%), rgb(255 255 255 / 10%));
+}
+
+// Темная тема
+[data-theme="dark"] {
+  --bg-main: #1E1E2D;
+  --bg-primary: #1E1E2D;
+  --bg-secondary: #2F2F3A;
+  --bg-tertiary: #374151;
+  --bg-form: #2A2A36;
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0B0;
+  --text-tertiary: #D1D5DB;
+  --text-light: #FFFFFF;
+  
+  --border: #3F3F4D;
+  --border-color: #3F3F4D;
+  
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 20%);
+  --shadow-md: 0 4px 6px rgb(0 0 0 / 30%);
+  --shadow-lg: 0 10px 15px rgb(0 0 0 / 40%);
+  
+  --gradient-overlay: linear-gradient(rgb(0 0 0 / 20%), rgb(0 0 0 / 10%));
+}
+
+// Системные предпочтения
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg-main: #1E1E2D;
+    --bg-primary: #1E1E2D;
+    --bg-secondary: #2F2F3A;
+    --bg-tertiary: #374151;
+    --bg-form: #2A2A36;
+    
+    --text-primary: #FFF;
+    --text-secondary: #A0A0B0;
+    --text-tertiary: #D1D5DB;
+    --text-light: #FFF;
+    
+    --border: #3F3F4D;
+    --border-color: #3F3F4D;
+    
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 20%);
+    --shadow-md: 0 4px 6px rgb(0 0 0 / 30%);
+    --shadow-lg: 0 10px 15px rgb(0 0 0 / 40%);
+    
+    --gradient-overlay: linear-gradient(rgb(0 0 0 / 20%), rgb(0 0 0 / 10%));
+    
+    // Градиенты для системной темной темы
+    --gradient-primary: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-primary-darken-1)) 100%);
+    --gradient-banner: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-primary-darken-1)) 50%, rgb(var(--v-theme-primary)) 100%);
+  }
+}

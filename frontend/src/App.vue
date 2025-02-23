@@ -5,7 +5,7 @@
 -->
 <template>
   <v-app :theme="isDarkTheme ? 'dark' : 'light'">
-    <app-navigation v-if="isInitialized && !error" />
+    <app-navigation v-if="isInitialized && !error && !isAuthPage" />
     
     <v-main>
       <v-container fluid>
@@ -49,106 +49,83 @@
       </v-container>
     </v-main>
 
-    <modal-window v-if="modal.isOpen" />
-    <toast-notification v-if="toast.show" />
+    <!-- Футер временно отключен
+    <app-footer v-if="isInitialized && !error" />
+    -->
+
+    <!-- Системные уведомления -->
+    <system-modal />
+    <system-toasts />
   </v-app>
 </template>
 
-<script>
+<script setup>
 import { computed, ref, onBeforeMount } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useError } from '@/composables/useError'
-import AppNavigation from './components/AppNavigation.vue'
-import ModalWindow from './components/ModalWindow.vue'
-import ToastNotification from './components/ToastNotification.vue'
+import { useRoute } from 'vue-router'
+import AppNavigation from './layouts/default/AppNavigation.vue'
+// import AppFooter from './layouts/default/AppFooter.vue' // Временно отключен
+import SystemModal from './components/features/notifications/SystemModal.vue'
+import SystemToasts from './components/features/notifications/SystemToasts.vue'
 
-export default {
-  name: 'App',
-  
-  components: {
-    AppNavigation,
-    ModalWindow,
-    ToastNotification
-  },
-  
-  setup() {
-    const authStore = useAuthStore()
-    const uiStore = useUiStore()
-    const { error, handleError } = useError()
+const authStore = useAuthStore()
+const uiStore = useUiStore()
+const route = useRoute()
+const { error, handleError } = useError()
+
+// Состояние загрузки
+const isLoading = ref(true)
+const isRetrying = ref(false)
+const errorDetails = ref(null)
+const loadingMessage = ref('Инициализация приложения')
+const loadingDetails = ref('Подготовка к запуску...')
+
+// Вычисляемые свойства
+const isDarkTheme = computed(() => uiStore.isDarkTheme)
+const isInitialized = computed(() => authStore.isInitialized)
+const isAuthPage = computed(() => route.path.includes('/auth'))
+
+/**
+ * Инициализация приложения
+ */
+const initializeApp = async () => {
+  try {
+    loadingMessage.value = 'Проверка авторизации'
+    loadingDetails.value = 'Получение данных пользователя...'
     
-    // Состояние загрузки
-    const isLoading = ref(true)
-    const isRetrying = ref(false)
-    const errorDetails = ref(null)
-    const loadingMessage = ref('Инициализация приложения')
-    const loadingDetails = ref('Подготовка к запуску...')
-    
-    // Вычисляемые свойства
-    const isDarkTheme = computed(() => uiStore.isDarkTheme)
-    const modal = computed(() => uiStore.getModal)
-    const toast = computed(() => uiStore.getToast)
-    const isInitialized = computed(() => authStore.isInitialized)
-    
-    /**
-     * Инициализация приложения
-     */
-    const initializeApp = async () => {
-      try {
-        loadingMessage.value = 'Проверка авторизации'
-        loadingDetails.value = 'Получение данных пользователя...'
-        
-        await authStore.init()
-      } catch (err) {
-        console.error('Ошибка при инициализации:', err)
-        handleError(err)
-        errorDetails.value = err.details || err.message
-      } finally {
-        isLoading.value = false
-      }
-    }
-    
-    /**
-     * Повторная попытка инициализации
-     */
-    const retryInitialization = async () => {
-      try {
-        isRetrying.value = true
-        error.value = null
-        errorDetails.value = null
-        loadingMessage.value = 'Повторная инициализация'
-        loadingDetails.value = 'Очистка состояния и повторная попытка...'
-        
-        await initializeApp()
-      } finally {
-        isRetrying.value = false
-      }
-    }
-    
-    // Запускаем инициализацию при монтировании
-    onBeforeMount(() => {
-      initializeApp()
-    })
-    
-    return {
-      // UI состояние
-      isDarkTheme,
-      modal,
-      toast,
-      
-      // Состояние загрузки
-      isInitialized,
-      isRetrying,
-      error,
-      errorDetails,
-      loadingMessage,
-      loadingDetails,
-      
-      // Методы
-      retryInitialization
-    }
+    await authStore.init()
+  } catch (err) {
+    console.error('Ошибка при инициализации:', err)
+    handleError(err)
+    errorDetails.value = err.details || err.message
+  } finally {
+    isLoading.value = false
   }
 }
+
+/**
+ * Повторная попытка инициализации
+ */
+const retryInitialization = async () => {
+  try {
+    isRetrying.value = true
+    error.value = null
+    errorDetails.value = null
+    loadingMessage.value = 'Повторная инициализация'
+    loadingDetails.value = 'Очистка состояния и повторная попытка...'
+    
+    await initializeApp()
+  } finally {
+    isRetrying.value = false
+  }
+}
+
+// Запускаем инициализацию при монтировании
+onBeforeMount(() => {
+  initializeApp()
+})
 </script>
 
 <style>

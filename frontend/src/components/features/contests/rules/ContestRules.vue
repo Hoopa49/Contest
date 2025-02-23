@@ -232,7 +232,7 @@ onMounted(() => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .contest-rules {
     padding: 16px;
   }

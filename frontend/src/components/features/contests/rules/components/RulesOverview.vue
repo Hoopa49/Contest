@@ -234,7 +234,7 @@ const downloadRules = async () => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .overview-alert {
     padding: 12px;
   }

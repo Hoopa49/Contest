@@ -260,7 +260,7 @@ const handleAction = (stage, action) => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .stage-card {
     margin-left: 0;
   }

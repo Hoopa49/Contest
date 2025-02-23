@@ -203,9 +203,9 @@ const formatDescription = (description) => {
 
 <style scoped>
 .prize-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
+  height: 100%;
   transition: transform 0.2s ease;
 }
 
@@ -214,8 +214,8 @@ const formatDescription = (description) => {
 }
 
 .prize-card--main {
-  border: 2px solid rgb(var(--v-theme-warning));
   background: linear-gradient(135deg, rgba(var(--v-theme-warning), 0.1) 0%, rgba(var(--v-theme-warning), 0.05) 100%);
+  border: 2px solid rgb(var(--v-theme-warning));
 }
 
 .prize-image {
@@ -244,7 +244,7 @@ const formatDescription = (description) => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .prize-card {
     margin-bottom: 16px;
   }

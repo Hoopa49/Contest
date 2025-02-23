@@ -4,6 +4,7 @@
  */
 
 import http from '@/utils/axios'
+import publicHttp from '@/utils/publicApi'
 import { AuthError } from '@/utils/errors'
 import { tokenService } from './auth/token.service'
 import { apiService } from './api.service'
@@ -189,16 +190,44 @@ class AuthAPI {
   }
 
   /**
+   * Запрос на сброс пароля
+   */
+  async resetPassword(email) {
+    try {
+      const response = await publicHttp.post('/auth/reset-password', { email })
+      
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Не удалось отправить запрос на сброс пароля')
+      }
+      
+      return response.data
+    } catch (error) {
+      console.error('Ошибка при запросе сброса пароля:', error.response?.data || error)
+      throw error
+    }
+  }
+
+  /**
    * Получение URL для авторизации через соцсеть
    */
   async getSocialAuthUrl(provider) {
-    const { data } = await http.get(`/auth/${provider}/url`)
-    
-    if (!data.success || !data.data?.url) {
-      throw new Error(data.message || 'Не удалось получить URL для авторизации')
+    try {
+      // Для Telegram используем специальный endpoint
+      if (provider === 'telegram') {
+        return this.getTelegramAuthUrl()
+      }
+
+      const response = await publicHttp.get(`/auth/${provider}/url`)
+      
+      if (!response.data?.success || !response.data?.data?.url) {
+        throw new Error(response.data?.message || 'Не удалось получить URL для авторизации')
+      }
+      
+      return response.data.data.url
+    } catch (error) {
+      console.error('Ошибка при получении URL для авторизации:', error.response?.data || error)
+      throw error
     }
-    
-    return data.data
   }
 
   /**
@@ -206,15 +235,26 @@ class AuthAPI {
    */
   async getTelegramAuthUrl() {
     try {
-      const { data } = await http.get('/auth/telegram/url')
+      const response = await publicHttp.get('/auth/telegram/url')
       
-      if (!data.success || !data.data?.url) {
-        throw new Error(data.message || 'Не удалось получить URL для авторизации')
+      if (!response.data?.success || !response.data?.data?.url) {
+        const errorResponse = response.data || response;
+        console.error('Ошибка при получении URL для Telegram:', {
+          response: errorResponse,
+          status: response.status,
+          headers: response.headers
+        });
+        throw new Error('Не удалось получить URL для авторизации через Telegram')
       }
       
-      return data.data
+      return response.data.data.url
     } catch (error) {
-      console.error('Ошибка при получении URL для Telegram авторизации:', error)
+      console.error('Ошибка при получении URL для Telegram авторизации:', {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        stack: error.stack
+      });
       throw error
     }
   }
@@ -224,11 +264,17 @@ class AuthAPI {
    */
   async handleTelegramCallback(authData) {
     try {
-      const { data } = await http.post('/auth/telegram/callback', authData)
+      const { data } = await publicHttp.post('/auth/telegram/callback', authData)
       
       if (!data.success || !data.data?.user || !data.data?.accessToken) {
         throw new Error(data.message || 'Ошибка при авторизации через Telegram')
       }
+      
+      // Сохраняем токены
+      tokenService.saveTokens({
+        accessToken: data.data.accessToken,
+        refreshToken: data.data.refreshToken
+      })
       
       return data.data
     } catch (error) {

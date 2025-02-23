@@ -226,7 +226,7 @@ watch([sortBy, selectedRating, showVerifiedOnly], () => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .controls {
     flex-direction: column;
     align-items: stretch;

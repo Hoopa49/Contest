@@ -1,0 +1,65 @@
+@use '../abstracts/variables' as *;
+@use '../abstracts/mixins' as *;
+
+.select-wrapper {
+  position: relative;
+  width: 100%;
+
+  select {
+    width: 100%;
+    height: 48px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--ui-kit-border-color);
+    color: rgba(var(--v-theme-on-background), var(--v-high-emphasis-opacity));
+    transition: var(--transition-base);
+    border-radius: var(--border-radius-md);
+    background-color: var(--background-input);
+    appearance: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+
+    &:hover:not(:disabled) {
+      border-color: rgba(var(--v-theme-primary), 0.7);
+      background-color: rgba(var(--v-theme-primary), var(--v-hover-opacity));
+    }
+
+    &:focus {
+      border-color: rgb(var(--v-theme-primary));
+      box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.1);
+      outline: none;
+      background-color: rgba(var(--v-theme-primary), var(--v-focus-opacity));
+    }
+
+    &.error {
+      border-color: rgb(var(--v-theme-error));
+      background-color: rgba(var(--v-theme-error), var(--v-hover-opacity));
+    }
+
+    &:disabled {
+      background-color: rgba(var(--v-theme-on-background), var(--v-idle-opacity));
+      border-color: rgba(var(--v-theme-on-background), var(--v-disabled-opacity));
+      color: rgba(var(--v-theme-on-background), var(--v-disabled-opacity));
+      cursor: not-allowed;
+    }
+
+    option {
+      padding: 0.5rem;
+      color: rgba(var(--v-theme-on-background), var(--v-high-emphasis-opacity));
+      background-color: var(--background-form);
+    }
+  }
+
+  &::after {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    width: 0;
+    height: 0;
+    transform: translateY(-50%);
+    content: '';
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid rgba(var(--v-theme-on-background), var(--v-medium-emphasis-opacity));
+    pointer-events: none;
+  }
+}

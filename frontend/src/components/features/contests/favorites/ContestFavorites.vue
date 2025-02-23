@@ -195,7 +195,7 @@ onMounted(() => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .contest-favorites {
     padding: 16px;
   }

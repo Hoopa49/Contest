@@ -15,6 +15,22 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  define: {
+    __VUE_PROD_DEVTOOLS__: true,
+    'process.env': {}
+  },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `
+          @use "@/styles/abstracts/_variables" as *;
+          @use "@/styles/abstracts/_mixins" as *;
+          @use "@/styles/abstracts/_functions" as *;
+        `,
+        api: 'modern'
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {
@@ -22,65 +38,17 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
-        ws: true,
         configure: (proxy, options) => {
-          // Логирование всех запросов
-          proxy.on('proxyReq', (proxyReq, req, res) => {
-            console.log('Sending Request to API:', {
-              method: req.method,
-              originalUrl: req.originalUrl,
-              path: proxyReq.path,
-              headers: proxyReq.getHeaders(),
-              body: req.body
-            });
-          });
-
-          // Логирование всех ответов
-          proxy.on('proxyRes', (proxyRes, req, res) => {
-            console.log('Received Response from API:', {
-              status: proxyRes.statusCode,
-              statusMessage: proxyRes.statusMessage,
-              headers: proxyRes.headers,
-              originalUrl: req.originalUrl
-            });
-
-            // Читаем тело ответа
-            let body = '';
-            proxyRes.on('data', function(chunk) {
-              body += chunk;
-            });
-            proxyRes.on('end', function() {
-              try {
-                const parsedBody = JSON.parse(body);
-                console.log('Response Body:', parsedBody);
-              } catch (e) {
-                console.log('Raw Response Body:', body);
-              }
-            });
-          });
-
-          // Обработка ошибок
           proxy.on('error', (err, req, res) => {
-            console.error('Proxy Error:', {
-              message: err.message,
-              stack: err.stack,
-              code: err.code,
-              request: {
-                method: req.method,
-                url: req.originalUrl,
-                headers: req.headers
-              }
+            console.error('Ошибка прокси:', err);
+            res.writeHead(500, {
+              'Content-Type': 'application/json'
             });
-            
-            if (!res.headersSent) {
-              res.writeHead(500, {
-                'Content-Type': 'application/json'
-              });
-              res.end(JSON.stringify({ 
-                message: 'Proxy error occurred',
-                error: err.message
-              }));
-            }
+            res.end(JSON.stringify({
+              error: true,
+              message: 'Ошибка прокси',
+              details: err.message
+            }));
           });
         }
       }

@@ -122,14 +122,11 @@ const headerImage = computed(() => {
 
 .image-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.1),
-    rgba(0, 0, 0, 0.4)
+    rgb(0 0 0 / 10%),
+    rgb(0 0 0 / 40%)
   );
 }
 
@@ -138,7 +135,7 @@ const headerImage = computed(() => {
   z-index: 1;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .v-card-title {
     flex-direction: column;
     align-items: flex-start;

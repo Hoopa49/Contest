@@ -150,7 +150,7 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 
 export default {
@@ -212,6 +212,21 @@ export default {
       return colors[status] || 'grey'
     }
 
+    const applyFilters = () => {
+      loadContests()
+    }
+
+    const resetFilters = () => {
+      filters.platform = null
+      filters.status = null
+      filters.search = ''
+      loadContests()
+    }
+
+    onMounted(() => {
+      loadContests()
+    })
+
     return {
       loading,
       filters,
@@ -221,7 +236,9 @@ export default {
       contests,
       viewDialog,
       selectedContest,
-      getStatusColor
+      getStatusColor,
+      applyFilters,
+      resetFilters
     }
   }
 }

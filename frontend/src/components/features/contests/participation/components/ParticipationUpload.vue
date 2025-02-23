@@ -312,16 +312,13 @@ onUnmounted(() => {
 
 .preview-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  inset: 0;
   display: flex;
-  align-items: center;
   justify-content: center;
-  opacity: 0;
+  align-items: center;
+  background: rgb(0 0 0 / 30%);
   transition: opacity 0.2s ease;
+  opacity: 0;
 }
 
 .preview-card:hover .preview-overlay {
@@ -340,14 +337,14 @@ onUnmounted(() => {
 }
 
 /* Адаптивность */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .previews {
     gap: 0.5rem;
   }
 
   .preview-overlay {
     opacity: 1;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgb(0 0 0 / 20%);
   }
 }
 </style> 

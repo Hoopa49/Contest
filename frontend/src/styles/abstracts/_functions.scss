@@ -1,0 +1,27 @@
+@use "sass:map";
+@use "variables" as *;
+
+// Функция для конвертации пикселей в rem
+@function rem($pixels) {
+  @return calc($pixels / 16) + rem;
+}
+
+// Функция для получения цвета из карты цветов
+@function theme-color($color-name, $variant: 'base') {
+  @return map.get(map.get($theme-colors, $color-name), $variant);
+}
+
+// Функция для создания rgba цвета с прозрачностью
+@function rgba-color($color, $opacity) {
+  @return rgba($color, $opacity);
+}
+
+// Функция для получения z-index из карты
+@function z-index($key) {
+  @return map.get($z-indexes, $key);
+}
+
+// Функция для расчета высоты с учетом навбара
+@function content-height($additional-offset: 0) {
+  @return calc(100vh - var(--navbar-height) - #{$additional-offset});
+}

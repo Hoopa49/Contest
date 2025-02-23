@@ -1,0 +1,411 @@
+@use "sass:list";
+@use "sass:map";
+@use "variables" as *;
+
+// Миксин для flexbox
+@mixin flex($direction: row, $justify: flex-start, $align: stretch, $wrap: nowrap) {
+  display: flex;
+  flex-flow: $direction $wrap;
+  justify-content: $justify;
+  align-items: $align;
+}
+
+// Миксин для грида
+@mixin grid($columns: 1, $gap: 1rem) {
+  display: grid;
+  grid-template-columns: repeat($columns, 1fr);
+  gap: $gap;
+}
+
+// Миксин для абсолютного позиционирования
+@mixin absolute($top: auto, $right: auto, $bottom: auto, $left: auto) {
+  position: absolute;
+  inset: $top $right $bottom $left;
+}
+
+// Миксин для текстового эллипсиса
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Миксин для плавных переходов
+@mixin transition($properties...) {
+  $transitions: ();
+
+  @each $property in $properties {
+    $transitions: list.append($transitions, $property 0.3s ease-in-out, comma);
+  }
+
+  transition: $transitions;
+}
+
+// Миксин для теней
+@mixin shadow($level: 'md') {
+  @if $level == 'sm' {
+    box-shadow: var(--shadow-sm);
+  } @else if $level == 'md' {
+    box-shadow: var(--shadow-md);
+  } @else if $level == 'lg' {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+// Миксин для медиа-запросов
+@mixin media-up($breakpoint) {
+  @media screen and (min-width: map.get($breakpoints, $breakpoint)) {
+    @content;
+  }
+}
+
+@mixin media-down($breakpoint) {
+  @media screen and (max-width: map.get($breakpoints, $breakpoint)) {
+    @content;
+  }
+}
+
+// Миксин для стилизации скроллбара
+@mixin custom-scrollbar($width: 6px, $track-color: var(--background-secondary), $thumb-color: var(--primary-base)) {
+  &::-webkit-scrollbar {
+    width: $width;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $track-color;
+    border-radius: $width;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $thumb-color;
+    border-radius: $width;
+
+    &:hover {
+      background: var(--primary-hover);
+    }
+  }
+}
+
+// Миксин для фокуса
+@mixin focus-ring($color: var(--primary-base), $offset: 2px) {
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 $offset $color;
+  }
+}
+
+// Миксин для инпутов форм
+@mixin form-input {
+  & {
+    width: 100%;
+    height: 52px;
+    padding: 1rem 1.25rem;
+    background: var(--bg-form);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all var(--transition-base);
+  }
+  
+  &::placeholder {
+    color: var(--text-secondary);
+  }
+  
+  &:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.2);
+    outline: none;
+  }
+  
+  &:disabled {
+    opacity: var(--v-disabled-opacity);
+    cursor: not-allowed;
+  }
+  
+  &.error {
+    border-color: rgb(var(--v-theme-error));
+  }
+  
+  &.error:focus {
+    box-shadow: 0 0 0 2px rgba(var(--v-theme-error), 0.2);
+  }
+  
+  &.success {
+    border-color: rgb(var(--v-theme-success));
+  }
+  
+  &.success:focus {
+    box-shadow: 0 0 0 2px rgba(var(--v-theme-success), 0.2);
+  }
+}
+
+// Миксин для группы форм
+@mixin form-group {
+  position: relative;
+  width: 100%;
+  margin-bottom: var(--spacing-base);
+  
+  &__label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    transition: color var(--transition-base);
+  }
+  
+  &__helper {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+  
+  &__error {
+    margin-top: 0.5rem;
+    color: rgb(var(--v-theme-error));
+    font-size: 0.875rem;
+  }
+  
+  &--required {
+    .form-group__label::after {
+      content: '*';
+      margin-left: 0.25rem;
+      color: rgb(var(--v-theme-error));
+    }
+  }
+}
+
+// Обновляем базовый миксин форм
+@mixin form-base {
+  & {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: var(--spacing-base);
+  }
+  
+  &__group {
+    & {
+      @include form-group;
+    }
+  }
+  
+  &__input {
+    & {
+      @include form-input;
+    }
+  }
+  
+  &__actions {
+    & {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--spacing-base);
+      margin-top: var(--spacing-lg);
+    }
+  }
+  
+  &__divider {
+    & {
+      width: 100%;
+      height: 1px;
+      margin: var(--spacing-base) 0;
+      background-color: var(--border-color);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    &__actions {
+      & {
+        flex-direction: column-reverse;
+      }
+      
+      .btn {
+        width: 100%;
+      }
+    }
+  }
+}
+
+// Миксин для кнопок
+@mixin button-base {
+  & {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius-md);
+    font-weight: 500;
+    transition: all var(--transition-base);
+    cursor: pointer;
+  }
+  
+  &:disabled {
+    opacity: var(--v-disabled-opacity);
+    cursor: not-allowed;
+  }
+  
+  &--primary {
+    & {
+      background: var(--gradient-primary);
+      color: var(--text-light);
+    }
+    
+    &:hover:not(:disabled) {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+  }
+  
+  &--secondary {
+    & {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+    
+    &:hover:not(:disabled) {
+      background: var(--bg-tertiary);
+    }
+  }
+}
+
+// Миксин для карточек
+@mixin card-base {
+  & {
+    background: var(--bg-form);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+// Миксин для алертов
+@mixin alert {
+  & {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    gap: 0.75rem;
+    border-radius: var(--border-radius-md);
+    margin: 1rem 0;
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.75rem;
+  }
+
+  &__icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  &__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  &__message {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    opacity: 0.9;
+  }
+
+  &__close {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0.125rem 0 0 0.5rem;
+    padding: 0;
+    background: none;
+    border: none;
+    color: currentcolor;
+    opacity: var(--v-medium-emphasis-opacity);
+    cursor: pointer;
+    transition: opacity var(--transition-base);
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  // Модификаторы
+  &--info {
+    background: rgba(var(--v-theme-info), 0.1);
+    color: rgb(var(--v-theme-info));
+    border-left: 3px solid rgb(var(--v-theme-info));
+  }
+
+  &--success {
+    background: rgba(var(--v-theme-success), 0.1);
+    color: rgb(var(--v-theme-success));
+    border-left: 3px solid rgb(var(--v-theme-success));
+  }
+
+  &--error {
+    background: rgba(var(--v-theme-error), 0.1);
+    color: rgb(var(--v-theme-error));
+    border-left: 3px solid rgb(var(--v-theme-error));
+  }
+
+  &--warning {
+    background: rgba(var(--v-theme-warning), 0.1);
+    color: rgb(var(--v-theme-warning));
+    border-left: 3px solid rgb(var(--v-theme-warning));
+  }
+}
+
+// Миксин для плавающих лейблов
+@mixin floating-label {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  z-index: 1;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.875rem;
+
+  &.float {
+    top: 0;
+    color: var(--primary-base);
+    transform: translateY(-50%) scale(0.85);
+    background-color: var(--background-form);
+    margin-top: -0.7rem;
+  }
+}
+
+// Миксин для контейнера формы
+@mixin form-container {
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
+  transition: var(--transition-base);
+  background-color: var(--background-form);
+  box-shadow: var(--shadow-form);
+}
+
+// Миксин для градиентной анимации
+@mixin gradient-animation {
+  background-size: 200% 200%;
+  animation: gradientAnimation 15s ease infinite;
+}

@@ -289,9 +289,9 @@ onMounted(() => {
 
 .sort-wrapper {
   position: relative;
+  padding: 4px 12px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 4px;
-  padding: 4px 12px;
 }
 
 .sort-label {
@@ -309,9 +309,9 @@ onMounted(() => {
 }
 
 :deep(.sort-select .v-field) {
-  border: none !important;
-  background: none !important;
   padding: 0 !important;
+  background: none !important;
+  border: none !important;
 }
 
 :deep(.sort-select .v-field__input) {
